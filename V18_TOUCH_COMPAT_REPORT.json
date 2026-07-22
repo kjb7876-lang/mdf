@@ -1,0 +1,12 @@
+{
+  "version": "mobile-file-touchfix-v18",
+  "static_checks": {
+    "body_touch_action": "manipulation",
+    "canvas_touch_action": "none",
+    "delegated_pointer_fallback": true,
+    "delegated_touch_fallback": true,
+    "late_native_click_dedup": true,
+    "critical_button_repair": true
+  },
+  "note": "Browser runtime automation was unavailable in this environment; JavaScript syntax and package integrity are checked separately."
+}

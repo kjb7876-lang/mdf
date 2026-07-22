@@ -1,0 +1,19 @@
+{
+  "errors": [],
+  "checks": {
+    "globals": {
+      "v17": true,
+      "overflow": 0,
+      "button": true,
+      "mobile": false
+    },
+    "afterStart": {
+      "active": true,
+      "text": "수동 전환"
+    },
+    "afterManual": {
+      "active": false,
+      "text": "자동 시작"
+    }
+  }
+}

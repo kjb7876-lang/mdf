@@ -1,0 +1,69 @@
+{
+  "errors": [],
+  "checks": {
+    "before": {
+      "v17": true,
+      "active": false,
+      "text": "자동 시작",
+      "bound": "1",
+      "top": true,
+      "rect": {
+        "x": 11,
+        "y": 80,
+        "w": 70.390625,
+        "h": 46
+      },
+      "touchAction": "manipulation",
+      "pointerEvents": "auto",
+      "z": "42"
+    },
+    "settingsOpen": {
+      "open": true,
+      "top": true
+    },
+    "afterStart": {
+      "active": true,
+      "text": "수동 전환",
+      "panelHidden": true,
+      "stats": {
+        "binds": 7,
+        "autoStarts": 1,
+        "manualStops": 0,
+        "deduped": 1,
+        "fallbacks": 0,
+        "panelClosures": 1,
+        "auto": true,
+        "button": true
+      }
+    },
+    "afterManual": {
+      "active": false,
+      "text": "자동 시작",
+      "manual": true,
+      "stats": {
+        "binds": 9,
+        "autoStarts": 1,
+        "manualStops": 1,
+        "deduped": 2,
+        "fallbacks": 0,
+        "panelClosures": 1,
+        "auto": false,
+        "button": true
+      }
+    },
+    "rerenderTap": {
+      "active": true,
+      "text": "수동 전환",
+      "stats": {
+        "binds": 11,
+        "autoStarts": 2,
+        "manualStops": 1,
+        "deduped": 2,
+        "fallbacks": 0,
+        "panelClosures": 1,
+        "auto": true,
+        "button": true
+      }
+    }
+  }
+}

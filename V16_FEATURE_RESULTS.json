@@ -1,0 +1,51 @@
+{
+  "errors": [],
+  "checks": {
+    "manualAuto": {
+      "started": true,
+      "after": false,
+      "manualLock": true,
+      "camera": false,
+      "cameraTarget": false,
+      "assist": false
+    },
+    "smartEnemyFx": {
+      "acquired": true,
+      "before": 0,
+      "after": 1,
+      "unstuck": 0
+    },
+    "saveLoad": {
+      "saved": true,
+      "loaded": true,
+      "scrap": 4321,
+      "lumen": 987,
+      "wave": 4,
+      "map": [
+        84,
+        60
+      ],
+      "gameOver": false
+    },
+    "performance": {
+      "avgMs": 0.47692307692307695,
+      "totalMs": 124,
+      "bad": 0,
+      "units": 20,
+      "enemies": 33,
+      "unstuck": 3,
+      "enemyFx": 0
+    },
+    "endingChallenge": {
+      "text": "악몽의 침공을 막아내어 EGO가 잠식되는 일은 일어나지 않았다. 몽세는 구원받았고 의목사는 안도의 한숨을 내쉬게 된다... 하지만 아직 끝이 아니니...시간은 계속해서 흘러간다.",
+      "expected": "악몽의 침공을 막아내어 EGO가 잠식되는 일은 일어나지 않았다. 몽세는 구원받았고 의목사는 안도의 한숨을 내쉬게 된다... 하지만 아직 끝이 아니니...시간은 계속해서 흘러간다.",
+      "label": "보통 난이도 도전",
+      "difficulty": "normal",
+      "gameOver": false,
+      "map": [
+        84,
+        60
+      ]
+    }
+  }
+}

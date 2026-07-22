@@ -1,0 +1,30 @@
+{
+  "errors": [],
+  "warnings": [],
+  "desktop": {
+    "v16": true,
+    "map": [
+      84,
+      60
+    ],
+    "overflow": 0,
+    "hwando": {
+      "hp": 400,
+      "damage": 34
+    },
+    "atmo": "0.72",
+    "ego": true
+  },
+  "mobile": {
+    "v16": true,
+    "mobile": true,
+    "classed": true,
+    "overflow": 0,
+    "touchPadding": 22,
+    "zoom": 0.72,
+    "minButton": 46,
+    "assist": true,
+    "atmo": "0.62",
+    "settingsClick": true
+  }
+}
