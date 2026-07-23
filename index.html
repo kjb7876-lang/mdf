@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="build-version" content="mobile-audio-wave-map-v31-stable" />
+  <meta name="build-version" content="mobile-start-touch-render-fixed-v33" />
   <title>사이버 성역 방어 2.5D - 첨부판 UI·게임진행 이미지 융합 최종본</title>
   <style>
     :root {
@@ -641,7 +641,7 @@
 (() => {
   'use strict';
 
-  const BUILD_VERSION = 'mobile-audio-wave-map-v31-stable';
+  const BUILD_VERSION = 'mobile-start-touch-render-fixed-v33';
 
   const CONFIG = {
     tile: 32, // 내부 로직용 타일 단위
@@ -20802,7 +20802,7 @@
 
   // MOBILE_AUDIO_WAVE_MAP_STABILITY_V31_START
   const MOBILE_V31 = {
-    version: 'mobile-audio-wave-map-v31-stable',
+    version: 'mobile-start-touch-render-fixed-v33',
     openingFixes: 0,
     auditMode: false,
     lastAudit: null,
@@ -20962,6 +20962,967 @@
     window.__CYBER_SANCTUM_V23__.runAutoAudit = v31RunAutoAudit;
   }
   // MOBILE_AUDIO_WAVE_MAP_STABILITY_V31_END
+
+
+
+  // MOBILE_PERSISTENT_SETTINGS_AUDIO_V32_START
+  const MOBILE_V32 = {
+    version: 'mobile-start-touch-render-fixed-v33',
+    enabled: usesTouchCommandUI(),
+    storageKey: 'cyberSanctum.mobile.v32.preferences',
+    panelTab: 'ops',
+    panelKey: '',
+    panelRenderedAt: 0,
+    panelGuardUntil: 0,
+    saveTimer: 0,
+    prefs: {
+      difficulty: 'easy',
+      fastMode: false,
+      autoEnabled: true,
+      autoMode: 'adaptive',
+      bgmEnabled: true,
+      sfxEnabled: true,
+      bgmVolume: 0.50,
+      sfxVolume: 0.65,
+    },
+    bgm: {
+      tracks: [],
+      index: 0,
+      current: null,
+      unlocked: false,
+      errors: [],
+      plays: 0,
+      switches: 0,
+    },
+    spacing: { gap: 1, checks: 0, blocked: 0 },
+  };
+
+  const V32_AUTO_META = Object.freeze({
+    adaptive: { label:'적응형', icon:'◎', cls:'good', desc:'방어·경제·병력을 균형 있게 자동 조정' },
+    defense:  { label:'방어 집중', icon:'▦', cls:'warn', desc:'성벽·포탑·수복 시설 우선' },
+    economy:  { label:'경제 집중', icon:'⚙', cls:'good', desc:'발전·정제·보급 기반 우선' },
+    army:     { label:'공격 집중', icon:'⚔', cls:'danger', desc:'전투 유닛과 영웅 전력 우선' },
+    tech:     { label:'연구 집중', icon:'⌬', cls:'good', desc:'교리 연구와 고급 시설 우선' },
+  });
+
+  AUTO_FOCUS77.adaptive = {
+    label:'균형 적응 운영', short:'적응', icon:'◎', cls:'good',
+    branchOrder:['defense','economy','army','tech'],
+    baseBuild:['turret','generator','wall','relay','barracks','repairSpire','refinery','lab','turret','chapel','wall'],
+    unitCycle:['exorcist','drone','exorcist','knight','sprayerUnit','exorcist'],
+    reserve:{ scrap:330, lumen:200 }, workerBase:5, combatBase:7,
+  };
+
+  function v32Clamp01(value, fallback = 0.5) {
+    const number = Number(value);
+    return Number.isFinite(number) ? clamp(number, 0, 1) : fallback;
+  }
+
+  function v32LoadPrefs() {
+    try {
+      const raw = localStorage.getItem(MOBILE_V32.storageKey);
+      if (raw) Object.assign(MOBILE_V32.prefs, JSON.parse(raw));
+    } catch (_) {}
+    if (!DIFFICULTY_REGISTRY[MOBILE_V32.prefs.difficulty]) MOBILE_V32.prefs.difficulty = 'easy';
+    MOBILE_V32.prefs.fastMode = !!MOBILE_V32.prefs.fastMode;
+    MOBILE_V32.prefs.autoEnabled = MOBILE_V32.prefs.autoEnabled !== false;
+    if (!V32_AUTO_META[MOBILE_V32.prefs.autoMode]) MOBILE_V32.prefs.autoMode = 'adaptive';
+    MOBILE_V32.prefs.bgmEnabled = MOBILE_V32.prefs.bgmEnabled !== false;
+    MOBILE_V32.prefs.sfxEnabled = MOBILE_V32.prefs.sfxEnabled !== false;
+    MOBILE_V32.prefs.bgmVolume = v32Clamp01(MOBILE_V32.prefs.bgmVolume, .50);
+    MOBILE_V32.prefs.sfxVolume = v32Clamp01(MOBILE_V32.prefs.sfxVolume, .65);
+  }
+
+  function v32SavePrefs(immediate = false) {
+    const save = () => {
+      MOBILE_V32.saveTimer = 0;
+      try { localStorage.setItem(MOBILE_V32.storageKey, JSON.stringify(MOBILE_V32.prefs)); } catch (_) {}
+    };
+    if (immediate) { window.clearTimeout(MOBILE_V32.saveTimer); save(); return; }
+    window.clearTimeout(MOBILE_V32.saveTimer);
+    MOBILE_V32.saveTimer = window.setTimeout(save, 120);
+  }
+  v32LoadPrefs();
+
+  // 정규전의 웨이브 공백을 단축한다. 1웨이브는 v31 규칙대로 본부 완공 직후 시작한다.
+  CONFIG.prepareTime = 45;
+  CONFIG.waveInterval = 78;
+
+  const V32_BGM_DATA = Object.freeze([
+    { id:'warden', label:'The Warden’s Final Entry', uri:'assets/bgm_warden_v33.mp3' },
+    { id:'sanctum', label:'성역의 전운', uri:'assets/bgm_sanctum_v33.mp3' },
+  ]);
+
+  function v32BgmOutputVolume() {
+    return MOBILE_V32.prefs.bgmEnabled ? 0.56 * MOBILE_V32.prefs.bgmVolume : 0;
+  }
+
+  function v32CreateBgmTracks() {
+    if (MOBILE_V32.bgm.tracks.length) return MOBILE_V32.bgm.tracks;
+    MOBILE_V32.bgm.tracks = V32_BGM_DATA.map((track, index) => {
+      const audio = new Audio(track.uri);
+      audio.preload = 'none';
+      audio.loop = false;
+      audio.playsInline = true;
+      audio.volume = v32BgmOutputVolume();
+      audio.addEventListener('ended', () => {
+        if (MOBILE_V32.bgm.current === audio) v32PlayBgmIndex(index + 1, true);
+      });
+      audio.addEventListener('error', () => MOBILE_V32.bgm.errors.push(`track-${track.id}`));
+      audio.addEventListener('volumechange', () => {
+        const expected = v32BgmOutputVolume();
+        if (Math.abs(audio.volume - expected) > .012) audio.volume = expected;
+      });
+      return { ...track, audio };
+    });
+    return MOBILE_V32.bgm.tracks;
+  }
+
+  function v32PauseLegacyBgm() {
+    try {
+      const current = FINAL_HWANDO_RUNTIME?.bgm;
+      const managed = MOBILE_V32.bgm.tracks.some(track => track.audio === current);
+      if (current && !managed) { current.pause(); current.volume = 0; }
+    } catch (_) {}
+  }
+
+  function v32PlayBgmIndex(index = 0, reset = false) {
+    const tracks = v32CreateBgmTracks();
+    if (!tracks.length) return false;
+    const normalized = ((Number(index) || 0) % tracks.length + tracks.length) % tracks.length;
+    const next = tracks[normalized];
+    const previous = MOBILE_V32.bgm.current;
+    if (previous && previous !== next.audio) previous.pause();
+    MOBILE_V32.bgm.index = normalized;
+    MOBILE_V32.bgm.current = next.audio;
+    try { FINAL_HWANDO_RUNTIME.bgm = next.audio; } catch (_) {}
+    next.audio.volume = v32BgmOutputVolume();
+    if (reset || next.audio.ended) {
+      try { next.audio.currentTime = 0; } catch (_) {}
+    }
+    if (!MOBILE_V32.prefs.bgmEnabled || !MOBILE_UI_V22.introStarted || document.hidden) {
+      next.audio.pause();
+      return false;
+    }
+    const play = next.audio.play();
+    if (play?.catch) play.catch(error => MOBILE_V32.bgm.errors.push(String(error?.message || error)));
+    MOBILE_V32.bgm.plays++;
+    if (previous && previous !== next.audio) MOBILE_V32.bgm.switches++;
+    return true;
+  }
+
+  function v32CurrentTrackLabel() {
+    return V32_BGM_DATA[MOBILE_V32.bgm.index]?.label || V32_BGM_DATA[0].label;
+  }
+
+  function v32ApplyAudioPrefs() {
+    const sfxOn = !!MOBILE_V32.prefs.sfxEnabled;
+    const sfxScale = MOBILE_V32.prefs.sfxVolume;
+    try {
+      MOBILE_V30.audio.muted = !sfxOn;
+      if (MOBILE_V30.audio.master && MOBILE_V30.audio.ctx) {
+        const target = sfxOn ? 0.46 * sfxScale : 0;
+        MOBILE_V30.audio.master.gain.setTargetAtTime(target, MOBILE_V30.audio.ctx.currentTime, .025);
+      }
+    } catch (_) {}
+    try {
+      if (SW_PATCH.audioGain) SW_PATCH.audioGain.gain.value = sfxOn ? 0.055 * (sfxScale / .65) : 0;
+    } catch (_) {}
+    try {
+      if (FINAL_HWANDO_RUNTIME.sfx) FINAL_HWANDO_RUNTIME.sfx.volume = sfxOn ? clamp(.42 * (sfxScale / .65), 0, 1) : 0;
+    } catch (_) {}
+    for (const track of v32CreateBgmTracks()) track.audio.volume = v32BgmOutputVolume();
+    if (!MOBILE_V32.prefs.bgmEnabled) MOBILE_V32.bgm.current?.pause();
+    else if (MOBILE_V32.bgm.unlocked && MOBILE_UI_V22.introStarted) v32PlayBgmIndex(MOBILE_V32.bgm.index, false);
+  }
+
+  function v32UnlockAudio() {
+    MOBILE_V32.bgm.unlocked = true;
+    v32PauseLegacyBgm();
+    try { v30UnlockAudio(); } catch (_) {}
+    v32ApplyAudioPrefs();
+    if (MOBILE_V32.prefs.bgmEnabled) v32PlayBgmIndex(MOBILE_V32.bgm.index, false);
+  }
+
+  const v32PlaySynthPrev = playSynthSW;
+  playSynthSW = function(kind, volume = .05) {
+    if (!MOBILE_V32.prefs.sfxEnabled) return false;
+    return v32PlaySynthPrev(kind, volume * (.45 + MOBILE_V32.prefs.sfxVolume * .85));
+  };
+  const v32FinalSkillSfxPrev = playFinalSkillSfx;
+  playFinalSkillSfx = function() {
+    if (!MOBILE_V32.prefs.sfxEnabled) return false;
+    v32ApplyAudioPrefs();
+    return v32FinalSkillSfxPrev();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) MOBILE_V32.bgm.current?.pause();
+    else if (MOBILE_V32.bgm.unlocked && MOBILE_V32.prefs.bgmEnabled && MOBILE_UI_V22.introStarted) v32PlayBgmIndex(MOBILE_V32.bgm.index, false);
+  });
+
+  // 비벽·비성문 건물에는 기본 한 칸의 외곽 간격을 둔다. 성벽과 성문은 연결 건축을 위해 예외 처리한다.
+  function v32SpacingExempt(type) {
+    const category = STRUCTURE_REGISTRY[type]?.category;
+    return category === 'wall' || category === 'gate';
+  }
+  function v32SpacingConflict(type, x, y) {
+    if (v32SpacingExempt(type)) return null;
+    const fp = structureFootprint(type);
+    const gap = MOBILE_V32.spacing.gap;
+    for (const structure of game.structures || []) {
+      if (!structure || structure.hp <= 0 || v32SpacingExempt(structure.type)) continue;
+      const other = structureFootprint(structure.type);
+      const separated = x + fp.w + gap <= structure.x || structure.x + other.w + gap <= x
+        || y + fp.h + gap <= structure.y || structure.y + other.h + gap <= y;
+      if (!separated) return structure;
+    }
+    return null;
+  }
+  const v32CanBuildPrev = canBuild;
+  canBuild = function(type, x, y) {
+    const result = v32CanBuildPrev(type, x, y);
+    if (!result?.ok) return result;
+    // The authored starter sanctuary already has fixed, readable anchors. Applying the
+    // post-gameplay spacing rule during that sequence can deadlock its builder.
+    if (!game.starterDefense?.completed) return result;
+    MOBILE_V32.spacing.checks++;
+    const conflict = v32SpacingConflict(type, x, y);
+    if (conflict) {
+      MOBILE_V32.spacing.blocked++;
+      return { ok:false, reason:'건물 기본 간격 1칸이 필요합니다' };
+    }
+    return result;
+  };
+
+  // 60초 자동 타이머를 제거하고 사용자가 바꾸기 전까지 선택 전략을 유지한다.
+  autoProgressStatusText = function() {
+    const state = game.autoProgress;
+    if (!state?.active) return '자동 꺼짐';
+    const label = V32_AUTO_META[state.focusKey]?.label || '적응형';
+    return state.waiting ? `${label} · 기지 완공 대기` : `${label} · 계속 운영`;
+  };
+
+  startAutoProgressFocus77 = function(focusKey = MOBILE_V32.prefs.autoMode) {
+    if (!V32_AUTO_META[focusKey]) focusKey = 'adaptive';
+    if (game.gameOver) return false;
+    if (game.autoProgress?.active) stopAutoProgress('전략 전환', true);
+    const state = makeAutoProgressState();
+    state.active = true;
+    state.focusKey = focusKey;
+    state.profileKey = game.difficulty;
+    state.waiting = !autoProgressReady();
+    state.remaining = Number.POSITIVE_INFINITY;
+    state.total = Number.POSITIVE_INFINITY;
+    state.persistent = true;
+    state.startedAt = game.defenseTime;
+    for (const type of Object.keys(STRUCTURE_REGISTRY)) state.baselineCounts[type] = game.structures.filter(s => s.type === type && s.hp > 0).length;
+    game.autoProgress = state;
+    game.v12ManualMode = false;
+    document.body.classList.add('auto-progress-active');
+    MOBILE_V32.prefs.autoEnabled = true;
+    MOBILE_V32.prefs.autoMode = focusKey;
+    v32SavePrefs();
+    addLog(`자동운영 시작 · ${V32_AUTO_META[focusKey].label}. 중지하거나 전략을 바꿀 때까지 계속됩니다.`);
+    refreshUI(true);
+    return true;
+  };
+
+  stopAutoProgress = function(reason = '중지', silent = false) {
+    const state = game.autoProgress;
+    if (!state?.active) return;
+    state.active = false;
+    state.waiting = false;
+    document.body.classList.remove('auto-progress-active');
+    if (!silent) {
+      const stats = state.stats || {};
+      addLog(`자동운영 ${reason}: 건설 ${stats.buildings || 0} · 생산 ${stats.production || 0} · 연구 ${stats.research || 0}.`);
+      toast(`자동운영 ${reason}`);
+    }
+    refreshUI(true);
+  };
+
+  updateAutoProgress = function(dt) {
+    const state = game.autoProgress;
+    if (!state?.active) return;
+    if (game.gameOver) { stopAutoProgress('종료', true); return; }
+    state.remaining = Number.POSITIVE_INFINITY;
+    if (!autoProgressReady()) { state.waiting = true; return; }
+    if (state.waiting) {
+      state.waiting = false;
+      state.startedAt = game.defenseTime;
+      state.thinkTimer = 0;
+      state.defenseTimer = 0;
+      addLog(`자동운영 실제 가동 · ${V32_AUTO_META[state.focusKey]?.label || '적응형'}.`);
+    }
+    state.thinkTimer -= dt;
+    state.defenseTimer -= dt;
+    if (state.thinkTimer <= 0) {
+      state.thinkTimer = CONFIG.autoProgressThinkInterval;
+      autoProgressThink();
+    }
+    if (state.defenseTimer <= 0) {
+      state.defenseTimer = CONFIG.autoProgressDefenseInterval;
+      autoSetRallyAndDefenseOrders();
+    }
+  };
+
+  function v32StartPersistentAuto(focusKey = MOBILE_V32.prefs.autoMode, silent = false) {
+    if (!V32_AUTO_META[focusKey]) focusKey = 'adaptive';
+    if (game.gameOver) return false;
+    MOBILE_V32.prefs.autoEnabled = true;
+    MOBILE_V32.prefs.autoMode = focusKey;
+    game.v12ManualMode = false;
+    let result = false;
+    try { result = v12StartAutoMode(focusKey, true); } catch (_) {}
+    // Legacy wrappers may briefly restore the former focus while switching an active strategy.
+    // Verify the final state and rebuild it once when necessary.
+    if (!game.autoProgress?.active || game.autoProgress.focusKey !== focusKey) {
+      try { if (game.autoProgress?.active) stopAutoProgress('전략 전환', true); } catch (_) {}
+      try { result = startAutoProgressFocus77(focusKey); } catch (_) {}
+    }
+    if (game.autoProgress?.active) {
+      game.autoProgress.focusKey = focusKey;
+      game.autoProgress.profileKey = game.difficulty;
+      game.autoProgress.remaining = Number.POSITIVE_INFINITY;
+      game.autoProgress.total = Number.POSITIVE_INFINITY;
+      game.autoProgress.persistent = true;
+    }
+    v32SavePrefs(true);
+    if (!silent) toast(`${V32_AUTO_META[focusKey].label} 자동운영 적용`);
+    return result !== false && !!game.autoProgress?.active;
+  }
+
+  function v32SetAutoEnabled(enabled, silent = false) {
+    MOBILE_V32.prefs.autoEnabled = !!enabled;
+    v32SavePrefs(true);
+    if (enabled) return v32StartPersistentAuto(MOBILE_V32.prefs.autoMode, silent);
+    if (game.autoProgress?.active || game.v12ManualMode !== true) v12EnterManualMode('설정에서 자동 해제', true);
+    if (!silent) toast('자동운영 꺼짐 · 다음 게임에도 유지');
+    return true;
+  }
+
+  toggleAutoProgress = function() {
+    return v32SetAutoEnabled(!game.autoProgress?.active, false);
+  };
+
+  function v32ApplyPregameConfig() {
+    game.difficulty = MOBILE_V32.prefs.difficulty;
+    game.fastMode = !!MOBILE_V32.prefs.fastMode;
+    game.nextWaveIn = nowWaveInterval();
+    try { v23SyncEasyPerformanceRules(); } catch (_) {}
+  }
+
+  function v32PregameHtml() {
+    const diff = MOBILE_V32.prefs.difficulty;
+    const fast = MOBILE_V32.prefs.fastMode;
+    const diffButton = (key, label) => `<button type="button" class="${diff === key ? 'active' : ''}" data-v32-pregame-difficulty="${key}">${label}</button>`;
+    return `<h1>악몽으로부터 세상을 구하라!</h1>
+      <div class="v32-prestart">
+        <section><b>난이도</b><div class="v32-choice three">${diffButton('easy','쉬움')}${diffButton('normal','보통')}${diffButton('hard','어려움')}</div></section>
+        <section><b>진행</b><div class="v32-choice two">
+          <button type="button" class="${!fast ? 'active' : ''}" data-v32-pregame-mode="standard">정규전<small>20웨이브 · 78초</small></button>
+          <button type="button" class="${fast ? 'active' : ''}" data-v32-pregame-mode="fast">압축전<small>8웨이브 · 42초</small></button>
+        </div></section>
+      </div>
+      <button id="closeHelp" type="button">게임 시작</button>`;
+  }
+
+  function v32RenderPregame() {
+    if (MOBILE_UI_V22.introStarted || game.gameOver) return;
+    const key = `${MOBILE_V32.prefs.difficulty}|${MOBILE_V32.prefs.fastMode ? 1 : 0}`;
+    const alreadyCurrent = helpEl.classList.contains('intro-splash')
+      && helpEl.classList.contains('v32-pregame')
+      && helpEl.dataset.v32PregameKey === key
+      && !!helpEl.querySelector('.v32-prestart')
+      && !!helpEl.querySelector('#closeHelp');
+    helpEl.classList.remove('hidden');
+    helpEl.classList.add('intro-splash', 'v32-pregame');
+    if (!alreadyCurrent) {
+      helpEl.dataset.v32PregameKey = key;
+      helpEl.innerHTML = v32PregameHtml();
+    }
+    renderUtilityButtons();
+  }
+
+  v22RenderMinimalIntro = v32RenderPregame;
+  v22StartGame = function() {
+    if (MOBILE_UI_V22.introStarted) return false;
+    v32ApplyPregameConfig();
+    v32SavePrefs(true);
+    MOBILE_UI_V22.introStarted = true;
+    MOBILE_UI_V22.introObserver?.disconnect();
+    helpEl.classList.remove('intro-splash', 'v32-pregame');
+    helpEl.classList.add('hidden');
+    game.paused = false;
+    setSystemPanelVisible(false);
+    v32UnlockAudio();
+    refreshUI(true);
+    window.setTimeout(() => {
+      if (game.gameOver) return;
+      if (MOBILE_V32.prefs.autoEnabled) v32StartPersistentAuto(MOBILE_V32.prefs.autoMode, true);
+      else v32SetAutoEnabled(false, true);
+      try {
+        const assist = ensureMobileAssistState();
+        assist.enabled = !!MOBILE_V32.prefs.autoEnabled;
+        assist.autoSkills = !!MOBILE_V32.prefs.autoEnabled;
+        assist.nextCycle = MOBILE_V32.prefs.autoEnabled ? .6 : 999999;
+      } catch (_) {}
+      refreshUI(true);
+    }, 70);
+    toast('초기 성역 자동건설 시작');
+    return true;
+  };
+
+  helpEl.addEventListener('click', event => {
+    const diff = event.target.closest('[data-v32-pregame-difficulty]');
+    if (diff) {
+      event.preventDefault();
+      MOBILE_V32.prefs.difficulty = diff.getAttribute('data-v32-pregame-difficulty');
+      v32SavePrefs(true);
+      v32RenderPregame();
+      return;
+    }
+    const mode = event.target.closest('[data-v32-pregame-mode]');
+    if (mode) {
+      event.preventDefault();
+      MOBILE_V32.prefs.fastMode = mode.getAttribute('data-v32-pregame-mode') === 'fast';
+      v32SavePrefs(true);
+      v32RenderPregame();
+      return;
+    }
+    const start = event.target.closest('#closeHelp');
+    if (start && helpEl.classList.contains('v32-pregame')) {
+      event.preventDefault();
+      v22StartGame();
+    }
+  }, true);
+
+  const v32ResetGamePrev = resetGame;
+  resetGame = function() {
+    MOBILE_V32.bgm.current?.pause();
+    const result = v32ResetGamePrev();
+    v32ApplyPregameConfig();
+    MOBILE_V32.panelTab = 'ops';
+    MOBILE_V32.panelKey = '';
+    window.setTimeout(v32RenderPregame, 0);
+    return result;
+  };
+
+  function v32Number(value) { return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR'); }
+  function v32StatusHtml() {
+    const basePct = game.base ? Math.round(100 * clamp(game.base.hp / Math.max(1, game.base.maxHp), 0, 1)) : 0;
+    const wave = game.waveActive ? `${game.wave}/${nowMaxWave()} 전투` : `${Math.min(nowMaxWave(), game.wave + 1)}/${nowMaxWave()} 준비`;
+    return `<div class="v32-status">
+      <span><b>${wave}</b><small>적 ${game.enemies.length}</small></span>
+      <span><b>본부 ${basePct}%</b><small>${v32Number(game.base?.hp)}/${v32Number(game.base?.maxHp)}</small></span>
+      <span><b>고철 ${Math.floor(game.resources.scrap)}</b><small>광휘 ${Math.floor(game.resources.lumen)}</small></span>
+    </div>`;
+  }
+
+  function v32AudioHtml() {
+    const p = MOBILE_V32.prefs;
+    return `<section class="v32-section"><div class="v32-section-head"><h4>오디오</h4><small>${escapeHtml(v32CurrentTrackLabel())}</small></div>
+      <div class="v32-grid three">
+        <button class="panel-command ${p.bgmEnabled ? 'active good' : ''}" type="button" data-v32-action="bgm-toggle">BGM ${p.bgmEnabled ? 'ON' : 'OFF'}<small>음악</small></button>
+        <button class="panel-command ${p.sfxEnabled ? 'active good' : ''}" type="button" data-v32-action="sfx-toggle">효과음 ${p.sfxEnabled ? 'ON' : 'OFF'}<small>전투음</small></button>
+        <button class="panel-command" type="button" data-v32-action="bgm-next" ${p.bgmEnabled ? '' : 'disabled'}>다음 곡<small>교대 재생</small></button>
+      </div>
+      <label class="v32-slider"><span>BGM 볼륨 <b data-v32-volume-label="bgm">${Math.round(p.bgmVolume*100)}%</b></span><input type="range" min="0" max="100" step="1" value="${Math.round(p.bgmVolume*100)}" data-v32-volume="bgm"></label>
+      <label class="v32-slider"><span>효과음 볼륨 <b data-v32-volume-label="sfx">${Math.round(p.sfxVolume*100)}%</b></span><input type="range" min="0" max="100" step="1" value="${Math.round(p.sfxVolume*100)}" data-v32-volume="sfx"></label>
+    </section>`;
+  }
+
+  function v32OpsHtml() {
+    const idle = game.workers.filter(isIdleWorker).length;
+    const combat = game.units.filter(unit => unit.hp > 0).length;
+    const workers = game.workers.filter(unit => unit.hp > 0).length;
+    const pct = Math.round((game.viewZoom || MOBILE_UI_V22.defaultZoom) * 100);
+    return `${v32AudioHtml()}
+      <section class="v32-section"><h4>게임 조작</h4><div class="v32-grid three">
+        <button class="panel-command warn ${game.paused ? 'active' : ''}" type="button" data-v32-action="pause">${game.paused ? '재개' : '일시정지'}<small>${game.paused ? '▶' : 'Ⅱ'}</small></button>
+        <button class="panel-command" type="button" data-v32-action="speed">속도 ${game.speed}x<small>1·2·4배</small></button>
+        <button class="panel-command ${game.cameraLock ? 'active' : ''}" type="button" data-v32-action="camera">카메라<small>${game.cameraLock ? '선택 추적' : '자유 이동'}</small></button>
+      </div></section>
+      <section class="v32-section"><h4>빠른 보기</h4><div class="v32-grid three">
+        <button class="panel-command good" type="button" data-v32-action="focus:base">본부<small>중심</small></button>
+        <button class="panel-command" type="button" data-v32-action="focus:combat" ${combat ? '' : 'disabled'}>전투 ${combat}<small>전체</small></button>
+        <button class="panel-command" type="button" data-v32-action="focus:workers" ${workers ? '' : 'disabled'}>시민 ${workers}<small>전체</small></button>
+        <button class="panel-command ${idle ? 'warn' : ''}" type="button" data-v32-action="focus:idle" ${idle ? '' : 'disabled'}>유휴 ${idle}<small>다음</small></button>
+        <button class="panel-command danger" type="button" data-v32-action="focus:nightmare" ${game.nightmare.unlocked ? '' : 'disabled'}>악몽<small>추적</small></button>
+        <button class="panel-command" type="button" data-v32-action="new-game">새 게임<small>시작 화면</small></button>
+      </div></section>
+      <section class="v32-section"><h4>시야</h4><div class="v32-zoom">
+        <button class="panel-command" type="button" data-v32-action="zoom:out">−</button>
+        <label><b data-v32-zoom-label>시야 ${pct}%</b><input type="range" min="28" max="125" step="5" value="${pct}" data-v32-zoom></label>
+        <button class="panel-command" type="button" data-v32-action="zoom:in">＋</button>
+      </div><div class="v32-grid two"><button class="panel-command" data-v32-action="zoom:max">최대 시야<small>28%</small></button><button class="panel-command" data-v32-action="zoom:reset">기본 시야<small>72%</small></button></div></section>`;
+  }
+
+  function v32AutoHtml() {
+    const active = !!game.autoProgress?.active;
+    const selected = MOBILE_V32.prefs.autoMode;
+    const cards = Object.entries(V32_AUTO_META).map(([key, meta]) => `<button class="panel-command v32-auto-card ${meta.cls} ${selected === key ? 'active' : ''}" type="button" data-v32-auto-mode="${key}"><b>${meta.icon} ${meta.label}</b><small>${meta.desc}</small></button>`).join('');
+    return `<section class="v32-section v32-auto-control"><div class="v32-auto-head"><span><b>${active ? '자동운영 중' : '자동운영 꺼짐'}</b><small>${escapeHtml(autoProgressStatusText())}</small></span>
+      <button class="panel-command ${active ? 'warn active' : 'good'}" type="button" data-v32-action="auto-toggle">${active ? '자동 끄기' : '자동 켜기'}</button></div></section>
+      <section class="v32-section"><div class="v32-section-head"><h4>자동 전략</h4><small>선택 즉시 적용 · 계속 유지</small></div><div class="v32-auto-grid">${cards}</div></section>`;
+  }
+
+  function v32CommandsHtml() {
+    let detail = '지도에서 유닛이나 건물을 선택하세요.';
+    try { if (game.selected || game.selectedUnits?.length) detail = v12SelectedDetailText(); } catch (_) {}
+    const source = [...actionBar.querySelectorAll('button')];
+    const commands = source.length ? source.map((button,index) => `<button class="panel-command ${button.className.includes('good')?'good':''} ${button.className.includes('warn')?'warn':''} ${button.className.includes('danger')?'danger':''} ${button.className.includes('active')?'active':''}" type="button" data-v32-command="${index}" ${button.disabled?'disabled':''}>${button.innerHTML}</button>`).join('') : '<div class="v32-empty">선택 대상의 명령이 여기에 표시됩니다.</div>';
+    return `<section class="v32-section"><h4>현재 선택</h4><div class="v32-selection">${escapeHtml(detail)}</div></section>
+      <section class="v32-section"><h4>선택 명령</h4><div class="v32-grid two">${commands}</div></section>`;
+  }
+
+  function v32PanelHtml() {
+    const tab = MOBILE_V32.panelTab;
+    const content = tab === 'auto' ? v32AutoHtml() : tab === 'commands' ? v32CommandsHtml() : v32OpsHtml();
+    return `<div class="v32-panel"><div class="v32-tabs">
+      <button type="button" class="${tab==='ops'?'active':''}" data-v32-tab="ops">운영</button>
+      <button type="button" class="${tab==='auto'?'active':''}" data-v32-tab="auto">자동</button>
+      <button type="button" class="${tab==='commands'?'active':''}" data-v32-tab="commands">명령</button>
+    </div>${v32StatusHtml()}${content}</div>`;
+  }
+
+  function v32PanelStateKey() {
+    const boss = typeof v23LiveBoss === 'function' ? v23LiveBoss() : null;
+    return JSON.stringify([
+      MOBILE_V32.panelTab, game.autoProgress?.active, game.autoProgress?.focusKey, game.paused, game.speed, game.cameraLock,
+      game.wave, game.waveActive, Math.floor(game.enemies.length/2), Math.floor(game.resources.scrap/25), Math.floor(game.resources.lumen/25),
+      game.base ? Math.floor(game.base.hp/Math.max(1,game.base.maxHp)*20) : -1, boss?.id||0,
+      game.selected?.id||0, (game.selectedUnits||[]).map(unit=>unit.id).join(','), game.commandPage, game.mode,
+      Math.round((game.viewZoom||.72)*100), MOBILE_V32.prefs.autoMode, MOBILE_V32.prefs.bgmEnabled, MOBILE_V32.prefs.sfxEnabled,
+      Math.round(MOBILE_V32.prefs.bgmVolume*100), Math.round(MOBILE_V32.prefs.sfxVolume*100), MOBILE_V32.bgm.index,
+    ]);
+  }
+
+  const v32RenderSystemPanelPrev = renderSystemPanel;
+  renderSystemPanel = function(force = false) {
+    if (!MOBILE_V32.enabled) return v32RenderSystemPanelPrev(force);
+    if (systemPanel.classList.contains('hidden')) return;
+    const now = performance.now();
+    const key = v32PanelStateKey();
+    if (!force && systemPanelBody.querySelector('.v32-panel') && now < MOBILE_V32.panelGuardUntil) return;
+    if (!force && key === MOBILE_V32.panelKey && now - MOBILE_V32.panelRenderedAt < 900) return;
+    const scrollTop = systemPanel.scrollTop;
+    systemPanel.querySelector('.system-panel-head strong').textContent = '설정';
+    systemPanelBody.innerHTML = v32PanelHtml();
+    // v31의 지연 장식보다 나중에 실행해 제목이 이전 버전명으로 되돌아가지 않게 한다.
+    queueMicrotask(() => {
+      const title = systemPanel.querySelector('.system-panel-head strong');
+      if (title && !systemPanel.classList.contains('hidden')) title.textContent = '설정';
+    });
+    MOBILE_V32.panelKey = key;
+    MOBILE_V32.panelRenderedAt = now;
+    systemPanel.scrollTop = scrollTop;
+  };
+
+  const v32RefreshUiPrev = refreshUI;
+  refreshUI = function(force = false) {
+    const result = v32RefreshUiPrev(force);
+    if (MOBILE_V32.enabled && !systemPanel.classList.contains('hidden')) {
+      const title = systemPanel.querySelector('.system-panel-head strong');
+      if (title) title.textContent = '설정';
+    }
+    return result;
+  };
+
+  for (const eventName of ['pointerdown','touchstart']) systemPanel.addEventListener(eventName, () => { MOBILE_V32.panelGuardUntil = performance.now()+1800; }, {capture:true,passive:true});
+  for (const eventName of ['pointerup','touchend']) systemPanel.addEventListener(eventName, () => { MOBILE_V32.panelGuardUntil = performance.now()+480; }, {capture:true,passive:true});
+  systemPanel.addEventListener('scroll', () => { MOBILE_V32.panelGuardUntil = performance.now()+700; }, {passive:true});
+
+  systemPanelBody.addEventListener('click', event => {
+    if (!MOBILE_V32.enabled) return;
+    const tab = event.target.closest('[data-v32-tab]');
+    if (tab) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      MOBILE_V32.panelTab = tab.getAttribute('data-v32-tab');
+      MOBILE_V32.panelKey = '';
+      renderSystemPanel(true);
+      return;
+    }
+    const mode = event.target.closest('[data-v32-auto-mode]');
+    if (mode) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const key = mode.getAttribute('data-v32-auto-mode');
+      if (V32_AUTO_META[key]) {
+        MOBILE_V32.prefs.autoMode = key;
+        v32SavePrefs(true);
+        if (game.autoProgress?.active) v32StartPersistentAuto(key, true);
+        toast(`${V32_AUTO_META[key].label} 자동전략 적용`);
+      }
+      MOBILE_V32.panelKey = '';
+      renderSystemPanel(true);
+      return;
+    }
+    const command = event.target.closest('[data-v32-command]');
+    if (command && !command.disabled) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      const source = [...actionBar.querySelectorAll('button')][Number(command.getAttribute('data-v32-command'))];
+      if (source && !source.disabled) { flashButtonPress(command); source.click(); }
+      MOBILE_V32.panelKey = '';
+      window.setTimeout(() => renderSystemPanel(true), 30);
+      return;
+    }
+    const button = event.target.closest('button[data-v32-action]');
+    if (!button || button.disabled) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    flashButtonPress(button);
+    const [action,value=''] = button.getAttribute('data-v32-action').split(':');
+    if (action === 'bgm-toggle') { MOBILE_V32.prefs.bgmEnabled = !MOBILE_V32.prefs.bgmEnabled; v32SavePrefs(true); v32ApplyAudioPrefs(); }
+    else if (action === 'sfx-toggle') { MOBILE_V32.prefs.sfxEnabled = !MOBILE_V32.prefs.sfxEnabled; v32SavePrefs(true); v32ApplyAudioPrefs(); }
+    else if (action === 'bgm-next') v32PlayBgmIndex(MOBILE_V32.bgm.index+1, true);
+    else if (action === 'auto-toggle') v32SetAutoEnabled(!game.autoProgress?.active, false);
+    else if (action === 'pause') { game.paused = !game.paused; refreshUI(true); }
+    else if (action === 'speed') { game.speed = game.speed===1?2:game.speed===2?4:1; refreshUI(true); }
+    else if (action === 'camera') { game.cameraLock=!game.cameraLock; if(game.cameraLock)game.cameraTarget=selectedCameraFocus(); refreshUI(true); }
+    else if (action === 'focus') {
+      if (value==='base') focusAndSelectBase(); else if(value==='combat')selectAllCombatUnits(); else if(value==='workers')selectAllWorkers(); else if(value==='idle')selectNextIdleWorker(); else if(value==='nightmare')focusNextNightmareZone();
+    } else if (action === 'zoom') {
+      if(value==='out')changeViewZoomViewPatch(-CAMERA_VIEW_PATCH.step); else if(value==='in')changeViewZoomViewPatch(CAMERA_VIEW_PATCH.step); else if(value==='max')setViewZoomViewPatch(MOBILE_UI_V22.maxWideZoom,true,true); else if(value==='reset')setViewZoomViewPatch(MOBILE_UI_V22.defaultZoom,true,true);
+    } else if (action === 'new-game') resetGame();
+    MOBILE_V32.panelKey = '';
+    window.setTimeout(() => { if (!systemPanel.classList.contains('hidden')) renderSystemPanel(true); }, 35);
+  }, true);
+
+  systemPanelBody.addEventListener('input', event => {
+    const volume = event.target.closest('[data-v32-volume]');
+    if (volume) {
+      event.stopImmediatePropagation();
+      const kind = volume.getAttribute('data-v32-volume');
+      const value = v32Clamp01(Number(volume.value)/100, kind==='bgm'?.5:.65);
+      if (kind==='bgm') MOBILE_V32.prefs.bgmVolume=value; else MOBILE_V32.prefs.sfxVolume=value;
+      const label = systemPanelBody.querySelector(`[data-v32-volume-label="${kind}"]`);
+      if (label) label.textContent = `${Math.round(value*100)}%`;
+      MOBILE_V32.panelGuardUntil = performance.now()+900;
+      v32ApplyAudioPrefs(); v32SavePrefs();
+      return;
+    }
+    const zoom = event.target.closest('[data-v32-zoom]');
+    if (zoom) {
+      event.stopImmediatePropagation();
+      setViewZoomViewPatch(Number(zoom.value)/100,true,false);
+      const label = systemPanelBody.querySelector('[data-v32-zoom-label]');
+      if(label)label.textContent=`시야 ${zoom.value}%`;
+      MOBILE_V32.panelGuardUntil=performance.now()+900;
+    }
+  }, true);
+  systemPanelBody.addEventListener('change', event => {
+    const volume = event.target.closest('[data-v32-volume]');
+    if (volume) { event.stopImmediatePropagation(); v32SavePrefs(true); return; }
+    const zoom = event.target.closest('[data-v32-zoom]');
+    if (zoom) { event.stopImmediatePropagation(); setViewZoomViewPatch(Number(zoom.value)/100,true,true); MOBILE_V32.panelKey=''; }
+  }, true);
+
+  const v32Style = document.createElement('style');
+  v32Style.id = 'mobilePersistentSettingsV32';
+  v32Style.textContent = `
+    #help.intro-splash.v32-pregame{width:min(410px,calc(100vw - 28px));padding:24px 16px 18px;max-height:min(88vh,650px);overflow:auto}
+    #help.intro-splash.v32-pregame>h1{font-size:clamp(25px,7.2vw,31px);line-height:1.28;word-break:keep-all;text-wrap:balance}
+    #help.intro-splash.v32-pregame>.v32-prestart:not(#closeHelp){display:grid!important;gap:12px;margin-top:18px;text-align:left}
+    #help.intro-splash.v32-pregame>.v32-prestart section{display:grid;gap:7px}
+    #help.intro-splash.v32-pregame>.v32-prestart section>b{font-size:12px;color:#bcd7e5}
+    .v32-choice{display:grid;gap:6px}.v32-choice.three{grid-template-columns:repeat(3,minmax(0,1fr))}.v32-choice.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .v32-choice button{min-height:48px;padding:7px 5px;border:1px solid rgba(130,220,255,.25);border-radius:9px;background:rgba(10,28,46,.96);color:#dff7ff;font:800 12px system-ui;touch-action:manipulation}
+    .v32-choice button small{display:block;margin-top:3px;color:#91acba;font-size:9px;font-weight:600}.v32-choice button.active{border-color:#a6ffbf;background:linear-gradient(180deg,#286548,#12392f);box-shadow:0 0 16px rgba(166,255,191,.13)}
+    #help.intro-splash.v32-pregame #closeHelp{margin-top:18px}
+    @media (hover:none) and (pointer:coarse){
+      body.mobile-touch-stable-v22 #systemPanel{left:auto!important;right:8px!important;width:min(318px,calc(100vw - 70px))!important;max-height:min(72vh,650px)!important;top:max(66px,calc(env(safe-area-inset-top) + 60px))!important;padding:7px!important}
+      body.mobile-touch-stable-v22 #systemPanel .system-panel-head{top:-7px;margin:-7px -7px 7px;padding:9px 9px 7px}
+    }
+    .v32-panel{display:grid;gap:7px}.v32-tabs{position:sticky;top:37px;z-index:7;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:3px;background:rgba(4,12,22,.96);border:1px solid rgba(130,220,255,.16);border-radius:8px}
+    .v32-tabs button{min-height:38px;border:0;border-radius:6px;background:rgba(16,37,58,.8);color:#9db8c5;font:800 11px system-ui;touch-action:manipulation}.v32-tabs button.active{background:linear-gradient(180deg,#2b6c80,#123c50);color:#fff}
+    .v32-status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.v32-status span{min-width:0;padding:5px;border:1px solid rgba(130,220,255,.13);border-radius:7px;background:rgba(7,20,34,.8)}
+    .v32-status b,.v32-status small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.v32-status b{font-size:10px;color:#dff7ff}.v32-status small{margin-top:2px;font-size:8px;color:#8faab8}
+    .v32-section{display:grid;gap:6px;padding:7px;border:1px solid rgba(130,220,255,.17);border-radius:8px;background:rgba(5,16,29,.75)}.v32-section h4{margin:0;color:#fff2a3;font-size:11px}.v32-section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.v32-section-head small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8faab8;font-size:8px}
+    .v32-grid{display:grid;gap:5px}.v32-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.v32-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.v32-grid button.panel-command{min-width:0;min-height:47px;padding:5px 3px;font-size:10px}.v32-grid button.panel-command small{font-size:8px}
+    .v32-slider{display:grid;gap:3px}.v32-slider span{display:flex;justify-content:space-between;color:#b9ced8;font-size:10px}.v32-slider b{color:#dff7ff}.v32-slider input{width:100%;height:27px;accent-color:#72f6ff;touch-action:pan-x}
+    .v32-zoom{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:5px}.v32-zoom>button{min-height:44px;padding:0;font-size:19px}.v32-zoom label{display:grid;gap:2px;text-align:center}.v32-zoom label b{font-size:10px;color:#dff7ff}.v32-zoom input{width:100%;height:27px;accent-color:#72f6ff;touch-action:pan-x}
+    .v32-auto-head{display:grid;grid-template-columns:1fr 92px;align-items:center;gap:7px}.v32-auto-head span b,.v32-auto-head span small{display:block}.v32-auto-head span b{font-size:12px;color:#dff7ff}.v32-auto-head span small{margin-top:2px;color:#91acba;font-size:9px}.v32-auto-head button{min-height:48px}
+    .v32-auto-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.v32-auto-grid .v32-auto-card:first-child{grid-column:1/-1}.v32-auto-card{min-height:58px!important;text-align:left;padding:7px!important}.v32-auto-card b{display:block;font-size:10px}.v32-auto-card small{white-space:normal!important;line-height:1.25;font-size:8px!important}
+    .v32-selection{padding:7px;border-radius:7px;background:rgba(8,25,40,.75);color:#cde6f1;font-size:10px;line-height:1.45}.v32-empty{grid-column:1/-1;padding:10px;color:#8faab8;font-size:10px;text-align:center}
+  `;
+  document.head.appendChild(v32Style);
+
+  function v32SpacingAudit() {
+    const violations = [];
+    const live = (game.structures || []).filter(s => s?.hp > 0 && !v32SpacingExempt(s.type));
+    for (let i=0;i<live.length;i++) for(let j=i+1;j<live.length;j++) {
+      const a=live[i], b=live[j];
+      // Starter-to-starter positions are a curated fixed layout; all later placements
+      // are checked against those structures by canBuild.
+      if (a.starterPackage && b.starterPackage) continue;
+      const af=structureFootprint(a.type), bf=structureFootprint(b.type), gap=MOBILE_V32.spacing.gap;
+      const separated=a.x+af.w+gap<=b.x||b.x+bf.w+gap<=a.x||a.y+af.h+gap<=b.y||b.y+bf.h+gap<=a.y;
+      if(!separated) violations.push({a:{id:a.id,type:a.type,x:a.x,y:a.y},b:{id:b.id,type:b.type,x:b.x,y:b.y}});
+    }
+    return { live:live.length, gap:MOBILE_V32.spacing.gap, violations };
+  }
+
+  async function v32RunAutoAudit(maxGameSeconds=6200, step=.18) {
+    const previous = { ...MOBILE_V32.prefs };
+    MOBILE_V32.prefs.difficulty='easy'; MOBILE_V32.prefs.fastMode=false; MOBILE_V32.prefs.autoEnabled=true; MOBILE_V32.prefs.autoMode='adaptive';
+    try {
+      const result = await v31RunAutoAudit(maxGameSeconds, step);
+      return { ...result, version:MOBILE_V32.version, auditMode:'easy-standard-persistent-auto-v32', persistentAutoNoMinuteTimer:!Number.isFinite(game.autoProgress?.remaining)||game.gameOver, waveInterval:CONFIG.waveInterval, spacing:v32SpacingAudit() };
+    } finally { Object.assign(MOBILE_V32.prefs, previous); }
+  }
+
+  v32ApplyAudioPrefs();
+  v32ApplyPregameConfig();
+  if (!MOBILE_UI_V22.introStarted) v32RenderPregame();
+
+  window.__CYBER_SANCTUM_V32__ = {
+    version:MOBILE_V32.version,
+    state:() => ({
+      build:document.querySelector('meta[name="build-version"]')?.content||'',
+      introStarted:MOBILE_UI_V22.introStarted,
+      pregame:{difficulty:MOBILE_V32.prefs.difficulty,fastMode:MOBILE_V32.prefs.fastMode},
+      runtime:{difficulty:game.difficulty,fastMode:game.fastMode,waveInterval:CONFIG.waveInterval},
+      auto:{preference:MOBILE_V32.prefs.autoEnabled,mode:MOBILE_V32.prefs.autoMode,active:!!game.autoProgress?.active,focus:game.autoProgress?.focusKey||null,remaining:game.autoProgress?.remaining},
+      audio:{bgmEnabled:MOBILE_V32.prefs.bgmEnabled,sfxEnabled:MOBILE_V32.prefs.sfxEnabled,bgmVolume:MOBILE_V32.prefs.bgmVolume,sfxVolume:MOBILE_V32.prefs.sfxVolume,currentTrack:v32CurrentTrackLabel(),trackCount:V32_BGM_DATA.length,unlocked:MOBILE_V32.bgm.unlocked,errors:MOBILE_V32.bgm.errors.slice(-5)},
+      panel:{open:!systemPanel.classList.contains('hidden'),tab:MOBILE_V32.panelTab,rect:systemPanel.getBoundingClientRect().toJSON?.()||null},
+      spacing:v32SpacingAudit(),
+    }),
+    start:v22StartGame,
+    openSettings:()=>setSystemPanelVisible(true),
+    setAuto:(enabled,mode=MOBILE_V32.prefs.autoMode)=>{if(V32_AUTO_META[mode])MOBILE_V32.prefs.autoMode=mode;return v32SetAutoEnabled(enabled,true)},
+    setAudio:(options={})=>{if('bgmEnabled'in options)MOBILE_V32.prefs.bgmEnabled=!!options.bgmEnabled;if('sfxEnabled'in options)MOBILE_V32.prefs.sfxEnabled=!!options.sfxEnabled;if('bgmVolume'in options)MOBILE_V32.prefs.bgmVolume=v32Clamp01(options.bgmVolume,.5);if('sfxVolume'in options)MOBILE_V32.prefs.sfxVolume=v32Clamp01(options.sfxVolume,.65);v32SavePrefs(true);v32ApplyAudioPrefs();return window.__CYBER_SANCTUM_V32__.state().audio},
+    nextTrack:()=>v32PlayBgmIndex(MOBILE_V32.bgm.index+1,true),
+    inspectSpacing:v32SpacingAudit,
+    runAutoAudit:v32RunAutoAudit,
+  };
+  window.__CYBER_SANCTUM_V31__.runAutoAudit = v32RunAutoAudit;
+  // MOBILE_PERSISTENT_SETTINGS_AUDIO_V32_END
+
+
+  // MOBILE_START_TOUCH_RENDER_FIX_V33_START
+  const MOBILE_V33 = {
+    version: 'mobile-start-touch-render-fixed-v33',
+    errors: [],
+    introPaintKey: '',
+    lastPregameAction: '',
+    lastPregameAt: -Infinity,
+    renderRecoveries: 0,
+    pregameTouches: 0,
+    starts: 0,
+  };
+
+  function v33RecordError(source, error) {
+    const message = String(error?.message || error || 'unknown');
+    MOBILE_V33.errors.push({ source, message, at: Date.now() });
+    if (MOBILE_V33.errors.length > 12) MOBILE_V33.errors.splice(0, MOBILE_V33.errors.length - 12);
+  }
+  window.addEventListener('error', event => v33RecordError('window', event.error || event.message), { passive:true });
+  window.addEventListener('unhandledrejection', event => v33RecordError('promise', event.reason), { passive:true });
+
+  // 이 픽셀 검사는 오프라인 QA용이다. 저사양 모바일 시작 단계에서는 수십 회의
+  // getImageData 호출이 터치와 첫 렌더를 지연시키므로 런타임에서는 생략한다.
+  try {
+    auditAllyUnitFramesUncroppedV3 = function() {
+      const result = { version:'ally-unit-runtime-audit-deferred-v33', ready:!!FUSION_ATLAS_V11?.ready, ok:true, deferred:true, failures:[] };
+      window.__ALLY_UNIT_UNCROPPED_V3_AUDIT__ = result;
+      return result;
+    };
+  } catch (_) {}
+
+  // 시작 전 선택 버튼을 누를 때 오디오 디코딩이 먼저 실행되지 않게 한다.
+  const v33UnlockAudioPrev = v30UnlockAudio;
+  v30UnlockAudio = function() {
+    if (!MOBILE_UI_V22.introStarted) return Promise.resolve(false);
+    return v33UnlockAudioPrev();
+  };
+
+  function v33PaintCanvasFallback(label = '') {
+    try {
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      const gradient = ctx.createLinearGradient(0, 0, 0, viewH);
+      gradient.addColorStop(0, '#071426');
+      gradient.addColorStop(1, '#01050b');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, viewW, viewH);
+      ctx.strokeStyle = 'rgba(102,240,255,.055)';
+      ctx.lineWidth = 1;
+      const step = 42;
+      for (let x = -viewH * .25; x < viewW + viewH * .25; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + viewH * .25, viewH); ctx.stroke();
+      }
+      for (let y = 0; y < viewH + viewW * .15; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(viewW, y - viewW * .15); ctx.stroke();
+      }
+      if (label) {
+        ctx.fillStyle = 'rgba(223,247,255,.78)';
+        ctx.font = '700 13px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, viewW / 2, viewH / 2);
+      }
+    } catch (error) { v33RecordError('fallback-render', error); }
+  }
+
+  // 시작 화면 뒤에서는 무거운 월드·스프라이트를 계속 그리지 않는다.
+  // 게임 시작 뒤 렌더 오류가 한 번 발생해도 루프가 끊기지 않고 복구 화면을 유지한다.
+  const v33FullRenderPrev = render;
+  render = function() {
+    if (MOBILE_UI_V22.enabled && !MOBILE_UI_V22.introStarted) {
+      const key = `${canvas.width}x${canvas.height}`;
+      if (MOBILE_V33.introPaintKey !== key) {
+        MOBILE_V33.introPaintKey = key;
+        v33PaintCanvasFallback('');
+      }
+      return;
+    }
+    try {
+      return v33FullRenderPrev();
+    } catch (error) {
+      MOBILE_V33.renderRecoveries++;
+      v33RecordError('render', error);
+      v33PaintCanvasFallback('그래픽 복구 중');
+      return false;
+    }
+  };
+
+  function v33UpdatePregameSelection() {
+    for (const button of helpEl.querySelectorAll('[data-v32-pregame-difficulty]')) {
+      button.classList.toggle('active', button.getAttribute('data-v32-pregame-difficulty') === MOBILE_V32.prefs.difficulty);
+      button.setAttribute('aria-pressed', button.classList.contains('active') ? 'true' : 'false');
+    }
+    for (const button of helpEl.querySelectorAll('[data-v32-pregame-mode]')) {
+      const isFast = button.getAttribute('data-v32-pregame-mode') === 'fast';
+      button.classList.toggle('active', isFast === !!MOBILE_V32.prefs.fastMode);
+      button.setAttribute('aria-pressed', button.classList.contains('active') ? 'true' : 'false');
+    }
+  }
+
+  function v33RenderPregameStable() {
+    if (MOBILE_UI_V22.introStarted || game.gameOver) return;
+    helpEl.classList.remove('hidden');
+    helpEl.classList.add('intro-splash', 'v32-pregame', 'v33-pregame-stable');
+    const hasStableMarkup = !!helpEl.querySelector('.v32-prestart') && !!helpEl.querySelector('#closeHelp');
+    if (!hasStableMarkup) helpEl.innerHTML = v32PregameHtml();
+    helpEl.dataset.v32PregameKey = `${MOBILE_V32.prefs.difficulty}|${MOBILE_V32.prefs.fastMode ? 1 : 0}`;
+    v33UpdatePregameSelection();
+    if (game.autoProgress?.active) stopAutoProgress('시작 대기', true);
+    game.paused = true;
+    renderUtilityButtons();
+  }
+  v32RenderPregame = v33RenderPregameStable;
+  v22RenderMinimalIntro = v33RenderPregameStable;
+
+  function v33PregameActionTarget(target) {
+    if (!target?.closest || MOBILE_UI_V22.introStarted || !helpEl.classList.contains('v32-pregame')) return null;
+    return target.closest('[data-v32-pregame-difficulty], [data-v32-pregame-mode], #closeHelp');
+  }
+
+  function v33RunPregameAction(target) {
+    const action = v33PregameActionTarget(target);
+    if (!action) return false;
+    let key = '';
+    if (action.matches('[data-v32-pregame-difficulty]')) key = `difficulty:${action.getAttribute('data-v32-pregame-difficulty')}`;
+    else if (action.matches('[data-v32-pregame-mode]')) key = `mode:${action.getAttribute('data-v32-pregame-mode')}`;
+    else key = 'start';
+    const now = performance.now();
+    if (MOBILE_V33.lastPregameAction === key && now - MOBILE_V33.lastPregameAt < 260) return true;
+    MOBILE_V33.lastPregameAction = key;
+    MOBILE_V33.lastPregameAt = now;
+    MOBILE_V33.pregameTouches++;
+
+    if (key.startsWith('difficulty:')) {
+      const value = key.slice('difficulty:'.length);
+      if (DIFFICULTY_REGISTRY[value]) MOBILE_V32.prefs.difficulty = value;
+      v32ApplyPregameConfig();
+      v32SavePrefs(true);
+      v33UpdatePregameSelection();
+      return true;
+    }
+    if (key.startsWith('mode:')) {
+      MOBILE_V32.prefs.fastMode = key.slice('mode:'.length) === 'fast';
+      v32ApplyPregameConfig();
+      v32SavePrefs(true);
+      v33UpdatePregameSelection();
+      return true;
+    }
+    v22StartGame();
+    return true;
+  }
+
+  // 일부 Android WebView는 click 생성이 늦거나 누락된다. 실제 손가락을 뗀 시점에 직접 처리한다.
+  helpEl.addEventListener('pointerup', event => {
+    if ((event.pointerType || 'touch') === 'mouse') return;
+    if (!v33RunPregameAction(event.target)) return;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, true);
+  helpEl.addEventListener('touchend', event => {
+    if (!v33RunPregameAction(event.target)) return;
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+  }, { capture:true, passive:false });
+
+  const v33StartGamePrev = v22StartGame;
+  v22StartGame = function() {
+    if (MOBILE_UI_V22.introStarted) return false;
+    MOBILE_V33.starts++;
+    document.body.classList.add('v33-game-starting');
+    // 첫 사용자 제스처 안에서 음원 로딩만 예약하고, 디코딩·재생은 비동기로 처리한다.
+    try {
+      const tracks = v32CreateBgmTracks();
+      tracks.forEach((track, index) => {
+        track.audio.preload = index === 0 ? 'auto' : 'none';
+      });
+    } catch (error) { v33RecordError('bgm-load', error); }
+    const result = v33StartGamePrev();
+    game.paused = false;
+    MOBILE_V33.introPaintKey = '';
+    requestAnimationFrame(() => {
+      document.body.classList.remove('v33-game-starting');
+      try { render(); } catch (error) { v33RecordError('first-render', error); v33PaintCanvasFallback('그래픽 준비 중'); }
+      refreshUI(true);
+    });
+    return result;
+  };
+
+  const v33Style = document.createElement('style');
+  v33Style.id = 'mobileStartTouchRenderFixV33';
+  v33Style.textContent = `
+    #help.v33-pregame-stable{pointer-events:auto!important;touch-action:pan-y!important;contain:layout paint;will-change:auto}
+    #help.v33-pregame-stable button{pointer-events:auto!important;touch-action:manipulation!important;user-select:none;-webkit-user-select:none;position:relative;z-index:2}
+    #help.v33-pregame-stable #closeHelp{min-height:60px!important}
+    body.v33-game-starting #gameCanvas{background:linear-gradient(180deg,#071426,#01050b)}
+  `;
+  document.head.appendChild(v33Style);
+
+  if (!MOBILE_UI_V22.introStarted) v33RenderPregameStable();
+  window.addEventListener('pageshow', () => {
+    if (!MOBILE_UI_V22.introStarted) v33RenderPregameStable();
+  }, { passive:true });
+
+  // 이전 공개 API가 교체 전 함수 참조를 보관하고 있으므로 최신 시작 함수로 갱신한다.
+  if (window.__CYBER_SANCTUM_V22__) window.__CYBER_SANCTUM_V22__.start = v22StartGame;
+  if (window.__CYBER_SANCTUM_V32__) {
+    window.__CYBER_SANCTUM_V32__.version = MOBILE_V33.version;
+    window.__CYBER_SANCTUM_V32__.start = v22StartGame;
+  }
+  window.__CYBER_SANCTUM_V33__ = {
+    version: MOBILE_V33.version,
+    start: v22StartGame,
+    openSettings: () => setSystemPanelVisible(true),
+    state: () => ({
+      build: document.querySelector('meta[name="build-version"]')?.content || '',
+      introStarted: MOBILE_UI_V22.introStarted,
+      helpHidden: helpEl.classList.contains('hidden'),
+      paused: !!game.paused,
+      pregame: { difficulty:MOBILE_V32.prefs.difficulty, fastMode:!!MOBILE_V32.prefs.fastMode },
+      runtime: { difficulty:game.difficulty, fastMode:!!game.fastMode, wave:game.wave, baseProgress:game.base?.buildProgress ?? null },
+      canvas: { width:canvas.width, height:canvas.height },
+      audio: { tracks:V32_BGM_DATA.map(track => track.uri), unlocked:MOBILE_V32.bgm.unlocked },
+      counters: { touches:MOBILE_V33.pregameTouches, starts:MOBILE_V33.starts, renderRecoveries:MOBILE_V33.renderRecoveries },
+      errors: MOBILE_V33.errors.slice(-8),
+    }),
+  };
+  // MOBILE_START_TOUCH_RENDER_FIX_V33_END
+
 
   requestAnimationFrame(loop);
 })();
