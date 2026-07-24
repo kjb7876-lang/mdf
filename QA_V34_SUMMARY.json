@@ -1,0 +1,127 @@
+{
+  "version": "mobile-enemy-bgm-selection-fullfix-v34",
+  "generatedAt": "2026-07-23",
+  "diagnosedCauses": [
+    "v33 GitHub 배포에 외부 BGM MP3 두 파일이 없어 404가 발생함",
+    "첫 웨이브 적이 화면 밖 스포너에서 출발하고 쉬움 자동포대에 화면 진입 전 처치됨",
+    "시작 전 선택 상태가 색상 차이만 있어 모바일에서 선택 여부가 불명확함",
+    "리셋 직후 구형 atlas 로더가 존재하지 않는 루트 PNG 네 개를 요청할 수 있었음",
+    "1×1 대체 PNG 한 개의 IDAT 체크섬이 손상되어 있었음"
+  ],
+  "fixes": [
+    "두 BGM을 경량 MP3로 index.html 내부에 내장하여 별도 BGM 파일 의존성 제거",
+    "정규전과 압축전 1웨이브의 초기 적을 카메라 안 우측 전선에 배치하고 잠시 자동포대 표적에서 제외",
+    "선택 버튼 체크 표시·강조 테두리·시작 버튼 난이도/모드 문구 추가",
+    "구형 외부 atlas 로더를 현재 내장 atlas 로더로 통합",
+    "손상된 1×1 투명 PNG 교체"
+  ],
+  "mobileSmoke": {
+    "passed": true,
+    "loadSeconds": 0.514,
+    "selectedDifficulty": "hard",
+    "selectedMode": "fast",
+    "selectedActiveButtons": [
+      "어려움",
+      "압축전8웨이브 · 42초"
+    ],
+    "firstVisibleEnemyAtSeconds": 5,
+    "openingVisibleSpawns": 4,
+    "bgmFirstTrack": "The Warden’s Final Entry",
+    "bgmSecondTrack": "성역의 전운",
+    "settings": {
+      "opened": true,
+      "closed": true
+    },
+    "errors": {
+      "page": [],
+      "console": [],
+      "requests": []
+    }
+  },
+  "selectionTransfer": {
+    "passed": true,
+    "runtime": {
+      "difficulty": "hard",
+      "mode": "fast",
+      "wave": 0,
+      "active": false,
+      "queue": 0,
+      "activeEnemies": 0,
+      "visibleEnemies": 0
+    }
+  },
+  "standardAutoAudit": {
+    "passed": true,
+    "result": "승리",
+    "wave": 20,
+    "maxWave": 20,
+    "kills": 671,
+    "bossesKilled": 9,
+    "finalBossDefeated": true,
+    "baseHp": 5001,
+    "mapLanesOpen": true,
+    "spacingViolations": [],
+    "errors": {
+      "page": [],
+      "console": [],
+      "requests": [],
+      "runtime": []
+    }
+  },
+  "compressedAutoAudit": {
+    "passed": true,
+    "result": "승리",
+    "wave": 8,
+    "maxWave": 8,
+    "kills": 198,
+    "bossesKilled": 8,
+    "finalBossDefeated": true,
+    "baseHp": 3863,
+    "openingVisibleSpawns": 4,
+    "errors": {
+      "page": [],
+      "console": [],
+      "requests": [],
+      "runtime": []
+    }
+  },
+  "audioControls": {
+    "passed": true,
+    "decodedEffects": 4,
+    "effectReady": {
+      "goblin": true,
+      "wolf": true,
+      "thunder": true,
+      "playerHit": true
+    },
+    "bgmSource": "embedded",
+    "offPaused": true,
+    "onPaused": false
+  },
+  "staticIntegrity": {
+    "passed": true,
+    "indexBytes": 3312631,
+    "assetReferenceCount": 12,
+    "missingAssets": [],
+    "invalidAssets": [],
+    "embeddedBgm": [
+      {
+        "label": "The Warden’s Final Entry",
+        "bytes": 1055636,
+        "matchesSource": true,
+        "duration": "175.896000"
+      },
+      {
+        "label": "성역의 전운",
+        "bytes": 360404,
+        "matchesSource": true,
+        "duration": "72.036000"
+      }
+    ],
+    "forbiddenReferences": {
+      "externalBgmRefs": [],
+      "legacyFusionRootRefs": []
+    }
+  },
+  "passed": true
+}
