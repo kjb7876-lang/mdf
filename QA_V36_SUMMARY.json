@@ -1,0 +1,269 @@
+{
+  "version": "mobile-hero-dialogue-settings-debug-v36",
+  "generated_at_utc": "2026-07-24T07:16:55.528573+00:00",
+  "overall_passed": true,
+  "implemented": {
+    "hero_dialogue_hud": {
+      "default": "전투에 집중",
+      "required_lines": [
+        "악몽군주를 처단하자.",
+        "몽세를 회복하자. 세상을 되찾을 수 있다.",
+        "희망이 보인다."
+      ],
+      "placement": "모바일 설정 버튼 왼쪽의 기존 보스 HUD 영역",
+      "boss_behavior": "보스 체력 정보를 우선 표시하고 하단에 의목사 멘트를 병행",
+      "anti_spam": "우선순위·대기열·중복 억제·상황별 간격 적용"
+    },
+    "settings_stability": [
+      "빠른 탭 전환 시 내부 탭과 강조 탭 불일치 수정",
+      "DOM 교체 및 비동기 복원 때문에 스크롤이 상단으로 튀는 현상 수정",
+      "탭별 스크롤 위치 독립 보존",
+      "슬라이더·휠·터치 조작 중 재렌더링 차단",
+      "패널 밖에서 포인터가 끝나도 상호작용 잠금 해제",
+      "명시적 설정 열기가 구형 재열기 억제 코드에 막히는 현상 수정",
+      "중복 ID·탭·범위값·패널 개수·유한 수치 런타임 감사 추가"
+    ]
+  },
+  "qa": {
+    "mobile_ui_debug": {
+      "passed": true,
+      "checks": {
+        "pregame_selection": true,
+        "start_touch": true,
+        "dialogue": true,
+        "default_text": true,
+        "settings_open": true,
+        "tabs": true,
+        "slider": true,
+        "touch_cycles": true,
+        "invariants": true,
+        "errors": true
+      },
+      "tab_scroll": {
+        "ops": {
+          "before": 552,
+          "after": 552,
+          "delta": 0,
+          "active": [
+            "ops"
+          ],
+          "auditTab": "ops",
+          "max": 905
+        },
+        "auto": {
+          "before": 522,
+          "after": 522,
+          "delta": 0,
+          "active": [
+            "auto"
+          ],
+          "auditTab": "auto",
+          "max": 855
+        },
+        "commands": {
+          "before": 292,
+          "after": 292,
+          "delta": 0,
+          "active": [
+            "commands"
+          ],
+          "auditTab": "commands",
+          "max": 479
+        }
+      },
+      "open_close_cycles": 8,
+      "duplicate_ids": [],
+      "page_errors": [],
+      "console_errors": [],
+      "request_failures": []
+    },
+    "settings_controls": {
+      "passed": true,
+      "checks": {
+        "audio_unlocked": true,
+        "bgm_toggle": true,
+        "sfx_toggle": true,
+        "volume_apply": true,
+        "next_track": true,
+        "pause_resume": true,
+        "speed_cycle": true,
+        "camera_toggle": true,
+        "auto_toggle_persistent": true,
+        "auto_strategy_switch": true,
+        "semi_auto_toggle": true,
+        "route_controls": true,
+        "commands_populated": true,
+        "boss_hud": true,
+        "settings_during_boss": true,
+        "invariants": true,
+        "new_game_returns_pregame": true,
+        "no_errors": true
+      },
+      "page_errors": [],
+      "console_errors": [],
+      "request_failures": []
+    },
+    "responsive": {
+      "passed": true,
+      "viewports": [
+        {
+          "name": "narrow",
+          "viewport": [
+            320,
+            720
+          ],
+          "passed": true,
+          "checks": {
+            "hud_in_view": true,
+            "long_text": true,
+            "panel_in_view": true,
+            "panel_not_fullscreen": true,
+            "tabs": true,
+            "errors": true
+          }
+        },
+        {
+          "name": "portrait",
+          "viewport": [
+            390,
+            844
+          ],
+          "passed": true,
+          "checks": {
+            "hud_in_view": true,
+            "long_text": true,
+            "panel_in_view": true,
+            "panel_not_fullscreen": true,
+            "tabs": true,
+            "errors": true
+          }
+        },
+        {
+          "name": "landscape",
+          "viewport": [
+            844,
+            390
+          ],
+          "passed": true,
+          "checks": {
+            "hud_in_view": true,
+            "long_text": true,
+            "panel_in_view": true,
+            "panel_not_fullscreen": true,
+            "tabs": true,
+            "errors": true
+          }
+        }
+      ]
+    },
+    "scenarios": {
+      "easy": {
+        "passed": true,
+        "result": "승리",
+        "wave": 20,
+        "max_wave": 20,
+        "kills": 713,
+        "bosses_killed": 9,
+        "final_boss_defeated": true,
+        "base_hp": 5015,
+        "base_ratio": 1,
+        "hero_route_tier": 0,
+        "hero_skill_count": 2,
+        "hero_kills": 713,
+        "ego_stolen": false,
+        "ego_recovered": false,
+        "normal_final_diverted": false,
+        "simulated_seconds": 1782,
+        "wall_milliseconds": 17500,
+        "runtime_errors": 0,
+        "page_errors": 0,
+        "console_errors": 0,
+        "request_failures": 0
+      },
+      "normal": {
+        "passed": true,
+        "result": "승리",
+        "wave": 20,
+        "max_wave": 20,
+        "kills": 1696,
+        "bosses_killed": 9,
+        "final_boss_defeated": true,
+        "base_hp": 426,
+        "base_ratio": 0.085,
+        "hero_route_tier": 12,
+        "hero_skill_count": 6,
+        "hero_kills": 1696,
+        "ego_stolen": false,
+        "ego_recovered": false,
+        "normal_final_diverted": true,
+        "simulated_seconds": 1746,
+        "wall_milliseconds": 14960,
+        "runtime_errors": 0,
+        "page_errors": 0,
+        "console_errors": 0,
+        "request_failures": 0
+      },
+      "hard": {
+        "passed": true,
+        "result": "승리",
+        "wave": 20,
+        "max_wave": 20,
+        "kills": 2102,
+        "bosses_killed": 9,
+        "final_boss_defeated": true,
+        "base_hp": 895,
+        "base_ratio": 0.18,
+        "hero_route_tier": 12,
+        "hero_skill_count": 6,
+        "hero_kills": 2102,
+        "ego_stolen": true,
+        "ego_recovered": true,
+        "normal_final_diverted": false,
+        "simulated_seconds": 1765,
+        "wall_milliseconds": 11704,
+        "runtime_errors": 0,
+        "page_errors": 0,
+        "console_errors": 0,
+        "request_failures": 0
+      }
+    },
+    "static_integrity": {
+      "passed": true,
+      "index_bytes": 3412031,
+      "asset_png_count": 12,
+      "missing_asset_refs": [],
+      "corrupt_pngs": [],
+      "embedded_bgm": [
+        {
+          "id": "v34BgmWardenData",
+          "present": true,
+          "decoded_bytes": 1055636,
+          "sha256": "acd0a2d47ead1f77252159cbf3ca2e449631c93f1f1b56040dd9cef1e25ccff0",
+          "ffprobe_ok": true,
+          "format": "mp3",
+          "duration_seconds": 175.896
+        },
+        {
+          "id": "v34BgmSanctumData",
+          "present": true,
+          "decoded_bytes": 360404,
+          "sha256": "7ef61c4ca43a027ca1406742d4be91fe6330e0eed85e8df57a9b5571c8068b9d",
+          "ffprobe_ok": true,
+          "format": "mp3",
+          "duration_seconds": 72.036
+        }
+      ],
+      "dialogue_lines_present": {
+        "악몽군주를 처단하자.": true,
+        "몽세를 회복하자. 세상을 되찾을 수 있다.": true,
+        "희망이 보인다.": true,
+        "전투에 집중": true
+      }
+    }
+  },
+  "method_note": {
+    "gameplay": "각 난이도 시나리오는 상태 간섭을 피하기 위해 독립 브라우저 컨텍스트에서 결정론적 시간 가속으로 실행",
+    "ui": "모바일 Chromium 터치 에뮬레이션에서 탭·휠·슬라이더·열기/닫기·반응형을 반복 검사",
+    "limitation": "테스트로 현재 재현 가능한 오류는 발견되지 않았으나 모든 물리 기기·브라우저 조합에서 숨은 오류가 절대 없음을 수학적으로 보장하는 검사는 아님"
+  }
+}
