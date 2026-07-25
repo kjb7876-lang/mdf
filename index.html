@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="build-version" content="mobile-debugged-combat-story-v39" />
-  <title>사이버 성역 방어 2.5D · 전투 안정화 최종판 v39</title>
+  <meta name="build-version" content="mobile-hard-final-duel-story-v40" />
+  <title>사이버 성역 방어 2.5D · 의목사 봉인·EGO 탈환 최종결전 v40</title>
   <style>
     :root {
       --panel: rgba(5, 10, 18, 0.86);
@@ -8302,11 +8302,11 @@
       game.fps = game.fpsFrames / game.fpsAccum;
       game.fpsAccum = 0; game.fpsFrames = 0;
     }
-    update(dt);
+    const deterministicAuditRunning = typeof MOBILE_V30 === 'object' && !!MOBILE_V30.auditMode;
+    if (!deterministicAuditRunning) update(dt);
     render();
     refreshUI(false);
   
-
 
 
 
@@ -24978,8 +24978,6 @@
   // HERO_SEAL_EGO_NARRATIVE_BALANCE_V37_END
 
 
-
-
   // FINAL_NARRATIVE_TOUCH_BALANCE_V38_START
   const MOBILE_V38={version:'mobile-final-narrative-balance-v38',errors:[],stats:{hudRepairs:0,touchRepairs:0,rangeAudits:0,balanceAudits:0}};
   const v38Meta=document.querySelector('meta[name="build-version"]');if(v38Meta)v38Meta.content=MOBILE_V38.version;
@@ -25082,144 +25080,1020 @@
   [80,320,1200].forEach(ms=>setTimeout(()=>{try{renderUtilityButtons();v38RenderNarrative();}catch(e){v38Err('boot',e);}},ms));
   // FINAL_NARRATIVE_TOUCH_BALANCE_V38_END
 
-  // COMBAT_UI_TARGET_STABILITY_V39_START
-  const MOBILE_V39={version:'mobile-debugged-combat-story-v39',mobile:usesTouchCommandUI(),errors:[],stats:{turretShots:0,turretFallbackShots:0,targetAssignments:0,targetRebalances:0,hudWrites:0,hudSkips:0,panelGuards:0}};
-  const v39Meta=document.querySelector('meta[name="build-version"]');if(v39Meta)v39Meta.content=MOBILE_V39.version;
-  function v39Error(scope,error){MOBILE_V39.errors.push({scope,message:String(error?.message||error),at:Date.now()});if(MOBILE_V39.errors.length>30)MOBILE_V39.errors.shift();}
 
-  // v38 wrote narrative DOM every frame. Keep the same story, but update only when content changes or after 220 ms.
-  let v39NarrativeAt=-1e9,v39NarrativeKey='';
-  const v39NarrativeRaw=v38RenderNarrative;
+
+  // FINAL_COMBAT_TARGET_UI_STABILITY_V39_START
+  const MOBILE_V39 = {
+    version:'mobile-combat-stability-v39',
+    installedAt:performance.now(),
+    errors:[],
+    stats:{
+      turretShots:0,turretWatchdogResets:0,turretLumenStalls:0,turretNoTarget:0,
+      targetSelections:0,unitTargetSelections:0,structureTargetSelections:0,targetCacheBuilds:0,targetCacheHits:0,maxTargetLoad:0,
+      settingsRenders:0,settingsDomRebuilds:0,settingsErrors:0,settingsScrollJumps:0,settingsRepairs:0,
+      narrativeRenders:0,narrativeSkips:0,storyAudits:0,performanceTrims:0,enemySpawnsSuppressed:0,peakLiveEnemies:0,enemyPathSearches:0,enemyPathDeferrals:0,peakPathSearchesPerUpdate:0,auraPulses:0,auraLoopSkips:0,
+    },
+    turretByType:{},
+    targetByKind:{unit:0,worker:0,structure:0},
+    settings:{rendering:false,lastUserAt:-Infinity,lastSoftAt:-Infinity,lastGoodHtml:'',lastGoodScroll:0},
+    targetCache:{nextAt:-Infinity,candidates:[],loads:new Map(),generation:0},
+    path:{active:false,budget:0,used:0},
+    regression:null,
+  };
+  const v39Meta=document.querySelector('meta[name="build-version"]');
+  if(v39Meta)v39Meta.content=MOBILE_V39.version;
+  if(typeof MOBILE_V38==='object')MOBILE_V38.version=MOBILE_V39.version;
+  if(typeof MOBILE_V37==='object')MOBILE_V37.version=MOBILE_V39.version;
+  if(typeof MOBILE_V36==='object')MOBILE_V36.version=MOBILE_V39.version;
+  if(typeof MOBILE_V35==='object')MOBILE_V35.version=MOBILE_V39.version;
+
+  function v39Error(scope,error){
+    const item={scope:String(scope),message:String(error?.message||error||'unknown'),at:Date.now()};
+    MOBILE_V39.errors.push(item);
+    if(MOBILE_V39.errors.length>30)MOBILE_V39.errors.splice(0,MOBILE_V39.errors.length-30);
+    try{console.error('[v39]',item.scope,item.message);}catch(_){}
+    return item;
+  }
+
+  // v38의 서사 HUD는 과거 빌드에서 loop() 내부에 잘못 삽입되어 매 프레임 재설치됐다.
+  // 현재 빌드에서는 패치가 IIFE 최상위에서 단 한 번만 설치되며 DOM 쓰기는 5Hz 이하로 제한한다.
+  const v39NarrativeRenderPrev=v38RenderNarrative;
+  let v39NarrativeNextAt=-Infinity;
   v38RenderNarrative=function(force=false){
     const now=performance.now();
-    let key='';
-    try{key=[v38Emotion(),v38NarrativeText(),v37Story()?.phase||'',!!v23LiveBoss()].join('|');}catch(error){v39Error('narrative-key',error);}
-    if(!force&&key===v39NarrativeKey&&now-v39NarrativeAt<220){MOBILE_V39.stats.hudSkips++;return;}
-    if(!force&&now-v39NarrativeAt<90){MOBILE_V39.stats.hudSkips++;return;}
-    v39NarrativeAt=now;v39NarrativeKey=key;
-    try{const result=v39NarrativeRaw();MOBILE_V39.stats.hudWrites++;return result;}catch(error){v39Error('narrative-render',error);}
+    if(!force&&now<v39NarrativeNextAt){MOBILE_V39.stats.narrativeSkips++;return;}
+    v39NarrativeNextAt=now+190;
+    MOBILE_V39.stats.narrativeRenders++;
+    return v39NarrativeRenderPrev();
   };
 
-  // Prevent combat-state refreshes from rebuilding the settings panel while the user is touching, scrolling, or sliding.
-  const V39_PANEL={busyUntil:0,lastScroll:0,lastTab:'operations',guardedRenders:0};
-  function v39PanelBusy(ms=500){V39_PANEL.busyUntil=Math.max(V39_PANEL.busyUntil,performance.now()+ms);if(systemPanel&&!systemPanel.classList.contains('hidden'))V39_PANEL.lastScroll=systemPanel.scrollTop||0;}
-  for(const type of ['pointerdown','touchstart','wheel','input'])systemPanel?.addEventListener(type,()=>v39PanelBusy(type==='wheel'?700:520),{capture:true,passive:true});
-  for(const type of ['pointerup','pointercancel','touchend','touchcancel','change'])document.addEventListener(type,()=>{if(systemPanel&&!systemPanel.classList.contains('hidden')){V39_PANEL.lastScroll=systemPanel.scrollTop||V39_PANEL.lastScroll;V39_PANEL.busyUntil=Math.max(V39_PANEL.busyUntil,performance.now()+180);}}, {capture:true,passive:true});
-  const v39RenderSystemPanelPrev=renderSystemPanel;
-  renderSystemPanel=function(){
-    if(systemPanel.classList.contains('hidden'))return;
-    if(performance.now()<V39_PANEL.busyUntil&&systemPanelBody.children.length){MOBILE_V39.stats.panelGuards++;V39_PANEL.guardedRenders++;return;}
-    const scroll=systemPanel.scrollTop||V39_PANEL.lastScroll||0;
-    const result=v39RenderSystemPanelPrev();
-    requestAnimationFrame(()=>{if(!systemPanel.classList.contains('hidden'))systemPanel.scrollTop=Math.min(scroll,Math.max(0,systemPanel.scrollHeight-systemPanel.clientHeight));});
+  // 의목사 루트에서 포탑 AI를 완전히 정지시키던 구형 밸런스 코드를 제거한다.
+  // 포탑은 모든 모드에서 실제 발사하되, 보통/어려움 영웅루트에서는 서사 밸런스를 위해 효율만 낮춘다.
+  const v39TurretDamagePrev=getTurretDamage;
+  getTurretDamage=function(structure){
+    let value=v39TurretDamagePrev(structure);
+    const route=v35Route();
+    if(route?.active&&game.difficulty==='normal')value*=.58;
+    else if(route?.active&&game.difficulty==='hard')value*=.38;
+    return Math.max(.5,Number(value)||.5);
+  };
+  const v39TurretFireRatePrev=getTurretFireRate;
+  getTurretFireRate=function(structure){
+    let value=v39TurretFireRatePrev(structure);
+    const route=v35Route();
+    if(route?.active&&game.difficulty==='normal')value*=1.12;
+    else if(route?.active&&game.difficulty==='hard')value*=1.20;
+    return clamp(Number(value)||1,.12,12);
+  };
+  const v39TurretCore=typeof v35UpdateTurretPrev==='function'?v35UpdateTurretPrev:updateTurret;
+  updateTurret=function(structure,dt){
+    if(!structure||structure.hp<=0||structure.underConstruction)return;
+    if(!Number.isFinite(structure.cooldown))structure.cooldown=0;
+    if(structure.cooldown<-2)structure.cooldown=-2;
+    const before=Number(structure.shotCount)||0;
+    let result;
+    try{result=v39TurretCore(structure,dt);}catch(error){v39Error(`turret:${structure.type}`,error);structure.cooldown=0;return;}
+    const after=Number(structure.shotCount)||0;
+    if(structure.cooldown<-2)structure.cooldown=-2;
+    if(after>before){
+      const delta=after-before;
+      MOBILE_V39.stats.turretShots+=delta;
+      MOBILE_V39.turretByType[structure.type]=(MOBILE_V39.turretByType[structure.type]||0)+delta;
+      structure.v39LastShotAt=game.defenseTime;
+      structure.v39HadTargetAt=game.defenseTime;
+    }
     return result;
   };
 
-  // Turret reliability: preserve every existing special attack, then fire a lightweight fallback only when a ready turret had a valid target but caused no shot/damage.
-  const v39UpdateTurretPrev=updateTurret;
-  function v39NearestTurretTarget(s){
-    const c=structureCenter(s),range=Math.max(2.5,getTurretRange(s)||0),r2=range*range;
-    let best=null,bestD2=Infinity;
-    for(const enemy of game.enemies||[]){if(!enemy||enemy.hp<=0)continue;const d2=dist2(c.x,c.y,enemy.x,enemy.y);if(d2<=r2&&d2<bestD2){best=enemy;bestD2=d2;}}
+  function v39LiveTurrets(){
+    return (game.structures||[]).filter(s=>s&&s.hp>0&&!s.underConstruction&&STRUCTURE_REGISTRY[s.type]?.category==='turret');
+  }
+
+  // 모바일에서 비보스 일반 적이 순간적으로 수백 기 누적되면 경로 탐색이 O(N²)에 가까워진다.
+  // 보스·서사 적·적 건물은 보존하고, 일반 적의 동시 전장 개체 수만 안전 상한으로 제한한다.
+  function v39RegularEnemyCap(){
+    if(!MOBILE_AUTO_DEVICE)return 160;
+    return game.fastMode?76:92;
+  }
+  function v39LiveRegularEnemyCount(){
+    let count=0;
+    for(const enemy of game.enemies||[]){
+      if(!enemy||enemy.hp<=0||enemy.enemyBuilding)continue;
+      const data=ENEMY_REGISTRY[enemy.type]||{};
+      if(data.boss||data.finalBoss||enemy.nightmareBoss||enemy.midbossWaveAssault)continue;
+      count++;
+    }
+    return count;
+  }
+  const v39SpawnEnemyPrev=spawnEnemy;
+  spawnEnemy=function(type,waveIndex,bossLevel=0){
+    const enemy=v39SpawnEnemyPrev(type,waveIndex,bossLevel);
+    if(!enemy)return enemy;
+    const data=ENEMY_REGISTRY[type]||{};
+    const protectedSpawn=!!(data.boss||data.finalBoss||enemy.nightmareBoss||enemy.midbossWaveAssault||enemy.enemyBuilding);
+    const live=v39LiveRegularEnemyCount();
+    MOBILE_V39.stats.peakLiveEnemies=Math.max(MOBILE_V39.stats.peakLiveEnemies,(game.enemies||[]).filter(e=>e&&e.hp>0).length);
+    if(!protectedSpawn&&live>v39RegularEnemyCap()){
+      const at=game.enemies.indexOf(enemy);if(at>=0)game.enemies.splice(at,1);
+      enemy.hp=0;enemy.maxHp=Math.max(1,enemy.maxHp||1);enemy.v39Suppressed=true;
+      MOBILE_V39.stats.enemySpawnsSuppressed++;
+    }
+    return enemy;
+  };
+  let v39TowerWatchAt=-Infinity;
+  function v39TowerWatchdog(){
+    if(game.paused||game.gameOver||game.defenseTime<v39TowerWatchAt)return;
+    v39TowerWatchAt=game.defenseTime+1.05;
+    const enemies=(game.enemies||[]).filter(e=>e&&e.hp>0&&!e.dormant);
+    if(!enemies.length)return;
+    for(const tower of v39LiveTurrets()){
+      const c=structureCenter(tower),range=getTurretRange(tower);
+      let target=null,best=Infinity;
+      for(const enemy of enemies){const d=dist2(c.x,c.y,enemy.x,enemy.y);if(d<=range*range&&d<best){best=d;target=enemy;}}
+      if(!target){MOBILE_V39.stats.turretNoTarget++;continue;}
+      tower.v39HadTargetAt=tower.v39HadTargetAt??game.defenseTime;
+      const data=STRUCTURE_REGISTRY[tower.type]||{};
+      const fireRate=getTurretFireRate(tower);
+      const shotLumen=data.upkeepLumen?data.upkeepLumen*Math.max(.1,fireRate):0;
+      if(shotLumen>0&&game.resources.lumen+1e-9<shotLumen){MOBILE_V39.stats.turretLumenStalls++;continue;}
+      const last=Number.isFinite(tower.v39LastShotAt)?tower.v39LastShotAt:tower.v39HadTargetAt;
+      if(game.defenseTime-last>Math.max(2.4,fireRate*4.2)){
+        tower.cooldown=0;tower.lockTargetId=null;tower.lockTime=0;tower.v39HadTargetAt=game.defenseTime;
+        MOBILE_V39.stats.turretWatchdogResets++;
+      }
+    }
+  }
+
+  // 가까운 대상을 기본으로 하되 한 대상에 적 전체가 몰리지 않도록 제한된 부하 분산을 적용한다.
+  function v39TargetPoint(target){return target?.kind==='structure'?structureCenter(target):target;}
+  function v39TargetDistance2(enemy,target){
+    if(!enemy||!target)return Infinity;
+    return target.kind==='structure'?structureDistance2(enemy.x,enemy.y,target):dist2(enemy.x,enemy.y,target.x,target.y);
+  }
+  function v39TargetCapacity(target){
+    if(!target)return 1;
+    if(target.kind==='structure'){
+      const category=STRUCTURE_REGISTRY[target.type]?.category;
+      if(target===game.base||target.type==='base')return 9;
+      if(category==='wall'||category==='gate')return 3;
+      if(category==='turret')return 4;
+      return 5;
+    }
+    if(target.hero||target.type==='hwandoHero')return 5;
+    if(target.kind==='worker')return 2;
+    return 3;
+  }
+  function v39TargetValid(target){
+    if(!target||target.hp<=0)return false;
+    if(target.kind==='structure')return game.structures.includes(target)&&!target.underConstruction;
+    return (game.units.includes(target)||game.workers.includes(target));
+  }
+  function v39RefreshTargetCache(force=false){
+    const cache=MOBILE_V39.targetCache;
+    const now=Number(game.defenseTime)||0;
+    if(!force&&now<cache.nextAt)return cache;
+    cache.nextAt=now+.34;cache.generation++;cache.loads.clear();
+    const candidates=[];
+    for(const unit of allPlayerUnits())if(v39TargetValid(unit))candidates.push(unit);
+    for(const structure of game.structures||[])if(v39TargetValid(structure))candidates.push(structure);
+    cache.candidates=candidates;
+    for(const enemy of game.enemies||[]){
+      const target=enemy?.attackTarget;
+      if(v39TargetValid(target))cache.loads.set(target,(cache.loads.get(target)||0)+1);
+    }
+    MOBILE_V39.stats.targetCacheBuilds++;
+    return cache;
+  }
+  function v39RoleBias(enemy,target){
+    const type=enemy?.type||'',data=ENEMY_REGISTRY[type]||{};
+    let bias=0;
+    if(target.kind==='structure'){
+      const category=STRUCTURE_REGISTRY[target.type]?.category;
+      if(type==='breaker')bias-=2.4;else if(type==='wraith'||type==='vampire')bias+=1.1;
+      if(category==='wall'||category==='gate')bias+=type==='breaker'?-1.4:.45;
+      if(category==='turret')bias-=.35;
+      if(target===game.base||target.type==='base')bias+=data.boss?-1.2:.75;
+    }else{
+      if(type==='breaker')bias+=2.2;
+      if(type==='wraith'||type==='vampire')bias-=1.0;
+      if(target.kind==='worker')bias+=type==='vampire'?-1.25:.55;
+      if(target.hero||target.type==='hwandoHero')bias+=data.boss?-1.7:.20;
+    }
+    return bias;
+  }
+  function v39TargetMatchesOptions(enemy,target,options={}){
+    if(!v39TargetValid(target))return false;
+    if(options.unitsOnly&&target.kind==='structure')return false;
+    if(options.structuresOnly&&target.kind!=='structure')return false;
+    const d2=v39TargetDistance2(enemy,target);
+    if(Number.isFinite(options.maxRange)&&d2>Math.max(0,options.maxRange)**2)return false;
+    if(options.guard){const p=v39TargetPoint(target);if(dist2(p.x,p.y,options.guard.x,options.guard.y)>options.guard.radius**2)return false;}
+    if(Array.isArray(options.candidates)&&!options.candidates.includes(target))return false;
+    return true;
+  }
+  function v39PickEnemyTarget(enemy,options={}){
+    if(!enemy||enemy.hp<=0)return null;
+    const now=Number(game.defenseTime)||0;
+    const cached=enemy.attackTarget||enemy.v39SuggestedTarget||null;
+    if(now<(enemy.v39RetargetAt||-Infinity)&&v39TargetMatchesOptions(enemy,cached,options)){MOBILE_V39.stats.targetCacheHits++;return cached;}
+    const cache=v39RefreshTargetCache();
+    const source=Array.isArray(options.candidates)?options.candidates:cache.candidates;
+    const maxRange=Number.isFinite(options.maxRange)?Math.max(0,options.maxRange):Infinity;
+    const max2=maxRange*maxRange;
+    let best=null,bestScore=Infinity,bestLoad=0;
+    for(const target of source){
+      if(!v39TargetValid(target))continue;
+      if(options.unitsOnly&&target.kind==='structure')continue;
+      if(options.structuresOnly&&target.kind!=='structure')continue;
+      if(options.guard){const p=v39TargetPoint(target);if(dist2(p.x,p.y,options.guard.x,options.guard.y)>options.guard.radius**2)continue;}
+      const d2=v39TargetDistance2(enemy,target);if(d2>max2)continue;
+      const load=cache.loads.get(target)||0,cap=v39TargetCapacity(target);
+      const overload=Math.max(0,load-cap+1);
+      const jitter=(((Number(enemy.id)||1)*73856093^(Number(target.id)||1)*19349663)>>>0)%101/1000;
+      const score=Math.sqrt(Math.max(0,d2))+load*.38+overload*5.25+v39RoleBias(enemy,target)+jitter;
+      if(score<bestScore){bestScore=score;best=target;bestLoad=load;}
+    }
+    if(best){
+      enemy.v39SuggestedTarget=best;
+      enemy.v39RetargetAt=now+.42+(((Number(enemy.id)||1)%7)*.035);
+      cache.loads.set(best,bestLoad+1);
+      MOBILE_V39.stats.targetSelections++;
+      const kind=best.kind==='structure'?'structure':best.kind==='worker'?'worker':'unit';
+      MOBILE_V39.targetByKind[kind]=(MOBILE_V39.targetByKind[kind]||0)+1;
+      if(kind==='structure')MOBILE_V39.stats.structureTargetSelections++;else MOBILE_V39.stats.unitTargetSelections++;
+      MOBILE_V39.stats.maxTargetLoad=Math.max(MOBILE_V39.stats.maxTargetLoad,bestLoad+1);
+    }else{enemy.v39SuggestedTarget=null;enemy.v39RetargetAt=now+.18;}
     return best;
   }
-  updateTurret=function(s,dt){
-    if(!s||s.hp<=0||s.underConstruction)return;
-    const beforeShots=s.shotCount||0;
-    const readyBefore=(s.cooldown||0)<=Math.max(.01,dt+.015);
-    const candidate=readyBefore?v39NearestTurretTarget(s):null;
-    const beforeHp=candidate?.hp;
-    let result;
-    try{result=v39UpdateTurretPrev(s,dt);}catch(error){v39Error('turret-main',error);}
-    const afterShots=s.shotCount||0;
-    const didDamage=candidate&&Number.isFinite(beforeHp)&&candidate.hp<beforeHp;
-    if(didDamage||afterShots>beforeShots){if(afterShots<=beforeShots)s.shotCount=beforeShots+1;MOBILE_V39.stats.turretShots++;return result;}
-    if(!candidate||candidate.hp<=0||!readyBefore)return result;
-    try{
-      const data=STRUCTURE_REGISTRY[s.type]||{};
-      const c=structureCenter(s),damage=Math.max(1,getTurretDamage(s)||data.damage||1);
-      if(data.splash){for(const enemy of [...game.enemies])if(enemy.hp>0&&dist2(enemy.x,enemy.y,candidate.x,candidate.y)<=data.splash*data.splash)damageEnemy(enemy,enemy===candidate?damage:damage*.48,'turretFallbackSplash');}
-      else damageEnemy(candidate,damage,'turretFallback');
-      addProjectile(c.x,c.y,candidate.x,candidate.y,'#e7eef2');
-      s.lockTargetId=candidate.id;s.shotCount=beforeShots+1;s.animTimer=.24;s.cooldown=Math.max(.22,getTurretFireRate(s)||data.fireRate||1);
-      MOBILE_V39.stats.turretShots++;MOBILE_V39.stats.turretFallbackShots++;
-    }catch(error){v39Error('turret-fallback',error);}
+
+  v35NearestPlayerTargetForEnemy=function(enemy){return v39PickEnemyTarget(enemy)||null;};
+  findEnemyUnitTargetMobile7=function(enemy,data,playerUnits=null){
+    const breaker=enemy?.type==='breaker';
+    const aggro=breaker?1.45:data?.boss?6.4:enemy?.type==='wraith'?5.6:4.5;
+    return v39PickEnemyTarget(enemy,{unitsOnly:true,maxRange:aggro,candidates:playerUnits||allPlayerUnits()});
+  };
+  chooseAdjacentAttackTarget=function(enemy){
+    const candidates=[];
+    for(const structure of game.structures||[])if(v39TargetValid(structure)&&isAdjacentEntityToStructure(enemy,structure))candidates.push(structure);
+    return v39PickEnemyTarget(enemy,{structuresOnly:true,candidates,maxRange:2.25});
+  };
+  findNightmareTarget=function(enemy){
+    const leash=(enemy.guardRadius||5)+3.5;
+    const candidates=allPlayerUnits().filter(unit=>v39TargetValid(unit));
+    return v39PickEnemyTarget(enemy,{unitsOnly:true,maxRange:CONFIG.nightmareAggroRange,candidates,guard:{x:enemy.guardX,y:enemy.guardY,radius:leash}});
+  };
+
+  // 적 경로 탐색이 한 프레임에 몰리지 않도록 예산을 둔다. 실제 모바일에서는
+  // 검색을 여러 프레임에 분산하고, 결정론적 QA에서는 충분한 예산을 허용한다.
+  const v39FindPathPrev=findPath;
+  findPath=function(...args){
+    if(MOBILE_V39.path.active){
+      if(MOBILE_V39.path.budget<=0){MOBILE_V39.stats.enemyPathDeferrals++;return null;}
+      MOBILE_V39.path.budget--;MOBILE_V39.path.used++;MOBILE_V39.stats.enemyPathSearches++;
+    }
+    return v39FindPathPrev(...args);
+  };
+  const v39FindPathToStructurePrev=findPathToAttackableStructure;
+  findPathToAttackableStructure=function(...args){
+    if(MOBILE_V39.path.active){
+      if(MOBILE_V39.path.budget<=0){MOBILE_V39.stats.enemyPathDeferrals++;return null;}
+      MOBILE_V39.path.budget--;MOBILE_V39.path.used++;MOBILE_V39.stats.enemyPathSearches++;
+    }
+    return v39FindPathToStructurePrev(...args);
+  };
+  const v39UpdateEnemiesPrev=updateEnemies;
+  updateEnemies=function(dt){
+    const live=(game.enemies||[]).filter(e=>e&&e.hp>0&&!e.enemyBuilding).length;
+    const audit=typeof MOBILE_V30==='object'&&!!MOBILE_V30.auditMode;
+    const previous={...MOBILE_V39.path};
+    const auraRestore=[];
+    // 치유 오라는 매 프레임 모든 적을 순회하지 않고 0.45초 단위 누적 펄스로 동일 회복량을 적용한다.
+    for(const enemy of game.enemies||[]){
+      if(!enemy||enemy.hp<=0||!(enemy.auraHeal>0))continue;
+      const base=enemy.auraHeal;auraRestore.push([enemy,base]);
+      enemy.v39AuraTimer=(enemy.v39AuraTimer??0)-dt;
+      if(enemy.v39AuraTimer<=0){
+        const period=.45;enemy.v39AuraTimer+=period;enemy.auraHeal=base*(period/Math.max(.001,dt));MOBILE_V39.stats.auraPulses++;
+      }else{enemy.auraHeal=0;MOBILE_V39.stats.auraLoopSkips++;}
+    }
+    MOBILE_V39.path.active=true;MOBILE_V39.path.used=0;
+    MOBILE_V39.path.budget=audit?10:(live>50?2:live>24?3:5);
+    try{return v39UpdateEnemiesPrev(dt);}
+    finally{
+      for(const [enemy,base] of auraRestore)enemy.auraHeal=base;
+      MOBILE_V39.stats.peakPathSearchesPerUpdate=Math.max(MOBILE_V39.stats.peakPathSearchesPerUpdate,MOBILE_V39.path.used);
+      MOBILE_V39.path.active=previous.active;MOBILE_V39.path.budget=previous.budget;MOBILE_V39.path.used=previous.used;
+    }
+  };
+  if(MOBILE_AUTO_DEVICE){CONFIG.pathRefreshMin=Math.max(CONFIG.pathRefreshMin,1.0);CONFIG.pathRefreshMax=Math.max(CONFIG.pathRefreshMax,1.65);}
+
+  const v39ResetGamePrev=resetGame;
+  resetGame=function(){
+    const result=v39ResetGamePrev();
+    MOBILE_V39.targetCache.nextAt=-Infinity;
+    MOBILE_V39.targetCache.candidates=[];
+    MOBILE_V39.targetCache.loads.clear();
+    v39TowerWatchAt=-Infinity;
+    v39NarrativeNextAt=-Infinity;
     return result;
   };
 
-  // Distribute enemies among nearby units, walls, turrets and the base instead of dog-piling one object.
-  const V39_TARGET={timer:0,counts:new Map(),last:new Map(),cursor:0,protectBase:false};
-  function v39TargetPoint(target){return target?.kind==='structure'?structureCenter(target):target;}
-  function v39TargetRole(target){
-    if(!target)return 'none';if(target.kind!=='structure')return target.hero?'hero':'unit';
-    const data=STRUCTURE_REGISTRY[target.type]||{};if(target.type==='base')return 'base';if(data.category==='turret')return 'turret';if(data.category==='wall'||data.category==='gate')return 'wall';return 'support';
-  }
-  function v39TargetCap(role){return role==='hero'?4:role==='unit'?3:role==='turret'?4:role==='wall'?5:role==='support'?3:role==='base'?3:3;}
-  function v39TargetScore(enemy,target){
-    const point=v39TargetPoint(target);if(!point||target.hp<=0)return Infinity;
-    const role=v39TargetRole(target),d=Math.sqrt(dist2(enemy.x,enemy.y,point.x,point.y));
-    const assigned=V39_TARGET.counts.get(target)||0,cap=v39TargetCap(role);
-    let score=d+assigned*2.35+Math.max(0,assigned-cap+1)*15;
-    const hpRatio=target.hp/Math.max(1,target.maxHp||target.hp);score+=(1-hpRatio)*-.35;
-    if(role==='unit')score-=.35;else if(role==='turret')score-=.18;else if(role==='base')score+=V39_TARGET.protectBase?24:4.5;
-    const previous=V39_TARGET.last.get(enemy.id);if(previous===target)score-=.65;
-    return score;
-  }
-  function v39AssignEnemyTargets(dt){
-    if(game.paused||game.gameOver||MOBILE_V30?.auditMode)return;V39_TARGET.timer-=dt;if(V39_TARGET.timer>0)return;V39_TARGET.timer=MOBILE_V39.mobile?.62:.46;
-    V39_TARGET.counts.clear();
-    const candidates=[...allPlayerUnits().filter(u=>u&&u.hp>0),...(game.structures||[]).filter(s=>s&&s.hp>0&&!s.underConstruction)];
-    V39_TARGET.protectBase=candidates.some(target=>target.kind!=='structure'||target.type!=='base');
-    for(const enemy of game.enemies||[]){if(enemy?.attackTarget&&enemy.attackTarget.hp>0)V39_TARGET.counts.set(enemy.attackTarget,(V39_TARGET.counts.get(enemy.attackTarget)||0)+1);}
-    const live=(game.enemies||[]).filter(enemy=>enemy&&enemy.hp>0&&!enemy.enemyBuilding);
-    const budget=Math.min(live.length,MOBILE_V39.mobile?10:16);
-    for(let offset=0;offset<budget;offset++){
-      const enemy=live[(V39_TARGET.cursor+offset)%Math.max(1,live.length)];if(!enemy)continue;
-      const current=enemy.attackTarget,currentRole=v39TargetRole(current),currentAssigned=current?(V39_TARGET.counts.get(current)||0):999;
-      if(current&&current.hp>0&&currentAssigned<=v39TargetCap(currentRole)*1.35&&v39TargetScore(enemy,current)<12.5)continue;
-      let best=null,bestScore=Infinity;
-      for(const target of candidates){const score=v39TargetScore(enemy,target);if(score<bestScore){bestScore=score;best=target;}}
-      if(!best)continue;
-      if(current!==best){enemy.attackTarget=best;enemy.pathTimer=0;enemy.path=[];enemy.pathIndex=0;MOBILE_V39.stats.targetRebalances++;}
-      V39_TARGET.last.set(enemy.id,best);V39_TARGET.counts.set(best,(V39_TARGET.counts.get(best)||0)+1);MOBILE_V39.stats.targetAssignments++;
+  // 전투 중 설정창은 상태 숫자만 가볍게 갱신하고 전체 DOM 교체는 실제 설정 변화에만 수행한다.
+  v32PanelStateKey=function(){
+    const boss=typeof v23LiveBoss==='function'?v23LiveBoss():null;
+    const route=v35Route();
+    return JSON.stringify([
+      MOBILE_V32.panelTab,!!game.autoProgress?.active,game.autoProgress?.focusKey||'',!!game.paused,game.speed,!!game.cameraLock,
+      game.wave,!!game.waveActive,boss?.id||0,game.selected?.id||0,(game.selectedUnits||[]).map(unit=>unit.id).join(','),game.commandPage,game.mode,
+      Math.round((game.viewZoom||.72)*100),MOBILE_V32.prefs.autoMode,!!MOBILE_V32.prefs.bgmEnabled,!!MOBILE_V32.prefs.sfxEnabled,
+      Math.round(MOBILE_V32.prefs.bgmVolume*100),Math.round(MOBILE_V32.prefs.sfxVolume*100),MOBILE_V32.bgm.index,
+      !!MOBILE_V35.prefs.semiAuto,!!route.active,route.tier,!!route.autoUpgrade,!!route.combatAssist,!!route.egoStolen,!!route.egoRecovered,
+    ]);
+  };
+  function v39SetText(root,selector,value){const el=root?.querySelector(selector);const next=String(value);if(el&&el.textContent!==next)el.textContent=next;}
+  function v39SoftPanelStatus(force=false){
+    if(systemPanel.classList.contains('hidden'))return;
+    const now=performance.now();if(!force&&now-MOBILE_V39.settings.lastSoftAt<320)return;
+    MOBILE_V39.settings.lastSoftAt=now;
+    const status=systemPanelBody.querySelector('.v32-status');
+    const spans=status?.querySelectorAll(':scope > span')||[];
+    if(spans.length>=3){
+      const basePct=game.base?Math.round(100*clamp(game.base.hp/Math.max(1,game.base.maxHp),0,1)):0;
+      const wave=game.waveActive?`${game.wave}/${nowMaxWave()} 전투`:`${Math.min(nowMaxWave(),game.wave+1)}/${nowMaxWave()} 준비`;
+      v39SetText(spans[0],'b',wave);v39SetText(spans[0],'small',`적 ${game.enemies.length}`);
+      v39SetText(spans[1],'b',`본부 ${basePct}%`);v39SetText(spans[1],'small',game.base?`${Math.round(game.base.hp).toLocaleString('ko-KR')}/${Math.round(game.base.maxHp).toLocaleString('ko-KR')}`:'건설 중');
+      v39SetText(spans[2],'b',`고철 ${Math.floor(game.resources.scrap)}`);v39SetText(spans[2],'small',`광휘 ${Math.floor(game.resources.lumen)}`);
     }
-    V39_TARGET.cursor=live.length?(V39_TARGET.cursor+budget)%live.length:0;
-    if(V39_TARGET.last.size>(game.enemies?.length||0)+60){const live=new Set((game.enemies||[]).map(e=>e.id));for(const id of V39_TARGET.last.keys())if(!live.has(id))V39_TARGET.last.delete(id);}
+    const route=v35Route();
+    for(const card of systemPanelBody.querySelectorAll('.v35-route-status')){
+      if(!route.active)continue;
+      const need=route.tier>=route.maxTier?0:v35RouteNeed(route.tier),pct=route.tier>=route.maxTier?100:Math.round(clamp(route.insight/Math.max(1,need),0,1)*100);
+      v39SetText(card,'b',`${v35RouteTitle()} · ${route.tier}/${route.maxTier}`);
+      v39SetText(card,'small',`스킬 ${v35RouteSkillCount()}종 · 공명 ${Math.floor(route.insight)}${need?`/${need}`:' · 완성'}`);
+      const bar=card.querySelector('i');if(bar)bar.style.width=`${pct}%`;
+    }
+  }
+  systemPanel.addEventListener('wheel',()=>MOBILE_V39.settings.lastUserAt=performance.now(),{passive:true});
+  systemPanel.addEventListener('touchmove',()=>MOBILE_V39.settings.lastUserAt=performance.now(),{passive:true});
+  systemPanel.addEventListener('pointerdown',()=>MOBILE_V39.settings.lastUserAt=performance.now(),{passive:true});
+  systemPanel.addEventListener('scroll',()=>{MOBILE_V39.settings.lastUserAt=performance.now();MOBILE_V39.settings.lastGoodScroll=systemPanel.scrollTop;},{passive:true});
+  const v39RenderPanelPrev=renderSystemPanel;
+  renderSystemPanel=function(force=false){
+    if(MOBILE_V39.settings.rendering){MOBILE_V39.stats.settingsRepairs++;return;}
+    const wasOpen=!systemPanel.classList.contains('hidden'),before=wasOpen?systemPanel.scrollTop:0,oldHtml=wasOpen?systemPanelBody.innerHTML:'';
+    MOBILE_V39.settings.rendering=true;
+    try{
+      const panelBefore=systemPanelBody.querySelector('.v32-panel');
+      const result=v39RenderPanelPrev(force);
+      MOBILE_V39.stats.settingsRenders++;
+      const panelAfter=systemPanelBody.querySelector('.v32-panel');
+      if(panelAfter&&panelAfter!==panelBefore)MOBILE_V39.stats.settingsDomRebuilds++;
+      if(wasOpen&&systemPanelBody.querySelector('.v32-panel'))MOBILE_V39.settings.lastGoodHtml=systemPanelBody.innerHTML;
+      v39SoftPanelStatus(true);
+      if(wasOpen){
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          if(systemPanel.classList.contains('hidden')||performance.now()-MOBILE_V39.settings.lastUserAt<480)return;
+          const after=systemPanel.scrollTop;
+          if(before>36&&after<before-32){MOBILE_V39.stats.settingsScrollJumps++;systemPanel.scrollTop=Math.min(before,Math.max(0,systemPanel.scrollHeight-systemPanel.clientHeight));}
+        }));
+      }
+      return result;
+    }catch(error){
+      MOBILE_V39.stats.settingsErrors++;v39Error('settings-render',error);
+      if(wasOpen&&oldHtml){systemPanelBody.innerHTML=oldHtml;systemPanel.scrollTop=before;MOBILE_V39.stats.settingsRepairs++;}
+      return;
+    }finally{MOBILE_V39.settings.rendering=false;}
+  };
+
+  function v39TrimPerformance(){
+    const projectileCap=MOBILE_AUTO_DEVICE?18:30,fxCap=MOBILE_AUTO_DEVICE?14:24,effectCap=MOBILE_AUTO_DEVICE?30:52;
+    let trimmed=0;
+    if(game.projectiles?.length>projectileCap){trimmed+=game.projectiles.length-projectileCap;game.projectiles.splice(0,game.projectiles.length-projectileCap);}
+    if(game.combatFx?.length>fxCap){trimmed+=game.combatFx.length-fxCap;game.combatFx.splice(0,game.combatFx.length-fxCap);}
+    if(game.effects?.length>effectCap){trimmed+=game.effects.length-effectCap;game.effects.splice(0,game.effects.length-effectCap);}
+    if(trimmed){MOBILE_V39.stats.performanceTrims+=trimmed;}
   }
 
   const v39UpdatePrev=update;
   update=function(dt){
     const result=v39UpdatePrev(dt);
-    try{v39AssignEnemyTargets(dt);}catch(error){v39Error('target-distribution',error);}
+    try{v39TowerWatchdog();v39TrimPerformance();v39SoftPanelStatus(false);}catch(error){v39Error('update',error);}
     return result;
   };
 
-  const v39ResetPrev=resetGame;
-  resetGame=function(){const result=v39ResetPrev();V39_TARGET.timer=0;V39_TARGET.cursor=0;V39_TARGET.counts.clear();V39_TARGET.last.clear();v39NarrativeAt=-1e9;v39NarrativeKey='';return result;};
+  function v39TurretAudit(){
+    const turrets=v39LiveTurrets();
+    return{
+      passed:turrets.length===0||turrets.some(t=>(t.shotCount||0)>0)||!game.enemies.some(e=>e?.hp>0),
+      total:turrets.length,shots:MOBILE_V39.stats.turretShots,byType:{...MOBILE_V39.turretByType},
+      watchdogResets:MOBILE_V39.stats.turretWatchdogResets,lumenStalls:MOBILE_V39.stats.turretLumenStalls,
+      details:turrets.map(t=>({id:t.id,type:t.type,shots:t.shotCount||0,cooldown:Number((t.cooldown||0).toFixed(3)),lastShot:Number.isFinite(t.v39LastShotAt)?Number(t.v39LastShotAt.toFixed(2)):null})),
+    };
+  }
+  function v39TurretCatalogAudit(){
+    const previousAudit=MOBILE_V30.auditMode;MOBILE_V30.auditMode=true;
+    try{
+      resetGame();MOBILE_UI_V22.introStarted=true;helpEl.classList.add('hidden');game.paused=false;game.gameOver=false;game.result=null;
+      game.structures=[];game.structureAt.clear();game.units=[];game.workers=[];game.enemies=[];game.enemyBaseBuildings=[];game.base=null;
+      game.resources.scrap=1000000;game.resources.lumen=1000000;
+      for(const key of Object.keys(game.tech||{}))game.tech[key]=true;
+      const base=createStructure('base',Math.floor(CONFIG.mapW/2)-2,Math.floor(CONFIG.mapH/2)-2,true);
+      if(base){base.underConstruction=false;base.buildProgress=1;base.hp=base.maxHp;game.base=base;}
+      if(game.starterDefense){game.starterDefense.active=false;game.starterDefense.completed=true;}
+      const types=Object.keys(STRUCTURE_REGISTRY).filter(type=>STRUCTURE_REGISTRY[type]?.category==='turret');
+      const results=[];
+      for(let index=0;index<types.length;index++){
+        const type=types[index],data=STRUCTURE_REGISTRY[type];
+        const x=8+(index%3)*12,y=8+Math.floor(index/3)*12;
+        const tower=createStructure(type,x,y,true);
+        tower.underConstruction=false;tower.buildProgress=1;tower.cooldown=0;tower.shotCount=0;
+        const enemy=spawnEnemy('bossVamp',Math.max(5,game.wave||5),1);
+        const c=structureCenter(tower),range=Math.max(1,getTurretRange(tower));
+        enemy.x=c.x+Math.max(.8,Math.min(range-.35,2.8));enemy.y=c.y;enemy.hp=enemy.maxHp=100000000;enemy.dormant=false;
+        const hpBefore=enemy.hp,shotsBefore=tower.shotCount||0;
+        for(let tick=0;tick<120&&(tower.shotCount||0)===shotsBefore;tick++){game.defenseTime+=.1;updateTurret(tower,.1);}
+        const shots=(tower.shotCount||0)-shotsBefore,damage=Math.max(0,hpBefore-enemy.hp);
+        results.push({type,name:data.name,range:Number(range.toFixed(2)),shots,damage:Number(damage.toFixed(2)),passed:shots>0&&damage>0});
+        removeStructure(tower,false);const ei=game.enemies.indexOf(enemy);if(ei>=0)game.enemies.splice(ei,1);game.projectiles.length=0;game.combatFx.length=0;game.effects.length=0;
+      }
+      return{version:MOBILE_V39.version,passed:results.length>0&&results.every(item=>item.passed),count:results.length,results};
+    }catch(error){v39Error('turret-catalog-audit',error);return{version:MOBILE_V39.version,passed:false,error:String(error?.message||error),results:[]};}
+    finally{MOBILE_V30.auditMode=previousAudit;}
+  }
 
-  function v39AuditTurrets(seconds=8,step=.08){
-    const turrets=(game.structures||[]).filter(s=>s.hp>0&&!s.underConstruction&&(STRUCTURE_REGISTRY[s.type]||{}).category==='turret');
-    const before=turrets.map(s=>({id:s.id,type:s.type,shots:s.shotCount||0}));
-    const enemyBefore=(game.enemies||[]).filter(e=>e.hp>0).reduce((sum,e)=>sum+e.hp,0);
-    const loops=Math.ceil(seconds/step);for(let i=0;i<loops&&!game.gameOver;i++)update(step);
-    const enemyAfter=(game.enemies||[]).filter(e=>e.hp>0).reduce((sum,e)=>sum+e.hp,0);
-    const rows=before.map(row=>{const s=turrets.find(t=>t.id===row.id);return{...row,after:s?.shotCount||0,fired:(s?.shotCount||0)>row.shots};});
-    return{passed:!turrets.length||rows.some(r=>r.fired)||enemyAfter<enemyBefore,turrets:rows,enemyDamage:Number((enemyBefore-enemyAfter).toFixed(2)),stats:{...MOBILE_V39.stats},errors:MOBILE_V39.errors.slice(-8)};
+  function v39TargetAudit(){
+    const current={};
+    for(const enemy of game.enemies||[]){const target=enemy?.attackTarget;if(!v39TargetValid(target))continue;const key=`${target.kind}:${target.type||'unknown'}:${target.id}`;current[key]=(current[key]||0)+1;}
+    const values=Object.values(current);
+    return{passed:MOBILE_V39.stats.targetSelections===0||((MOBILE_V39.stats.unitTargetSelections>0||!game.units.length)&&(MOBILE_V39.stats.structureTargetSelections>0||!game.structures.length)),current,maxCurrent:values.length?Math.max(...values):0,uniqueCurrent:values.length,cumulativeByKind:{...MOBILE_V39.targetByKind},maxObserved:MOBILE_V39.stats.maxTargetLoad};
   }
-  function v39AuditTargets(){
-    const byRole={};for(const enemy of game.enemies||[]){if(enemy.hp<=0)continue;const role=v39TargetRole(enemy.attackTarget);byRole[role]=(byRole[role]||0)+1;}
-    const maxAssigned=Math.max(0,...V39_TARGET.counts.values());return{passed:Object.keys(byRole).length>=Math.min(2,(game.enemies||[]).filter(e=>e.hp>0).length),byRole,maxAssigned,liveEnemies:(game.enemies||[]).filter(e=>e.hp>0).length};
+  function v39StoryAudit(){
+    MOBILE_V39.stats.storyAudits++;
+    const story=v37Story(),codes=(story.events||[]).map(event=>event.code);
+    const ordered=(required)=>required.every((code,index)=>{const at=codes.indexOf(code);return at>=0&&(index===0||at>codes.indexOf(required[index-1]));});
+    let expected=[],passed=true;
+    if(game.difficulty==='normal'&&v35Route().active){expected=['route-open','normal-final','normal-clear'];passed=game.result!=='승리'||ordered(expected);}
+    if(game.difficulty==='hard'&&v35Route().active){expected=['route-open','seal','seal-warning','theft-awaken','ego-reclaimed'];passed=game.result!=='승리'||ordered(expected);}
+    if(game.difficulty==='hard'&&!v35Route().active&&game.result==='승리')passed=false;
+    return{passed,expected,codes,phase:story.phase,egoStolen:!!v35Route().egoStolen,egoRecovered:!!v35Route().egoRecovered,result:game.result};
   }
-  function v39PrepareCombatAudit(){
-    resetGame();MOBILE_UI_V22.introStarted=true;helpEl.classList.add('hidden');game.paused=false;game.gameOver=false;game.difficulty='easy';
-    if(!game.base)createStructure('base',12,Math.floor(CONFIG.mapH/2),true);
-    const c=game.base?structureCenter(game.base):{x:14,y:Math.floor(CONFIG.mapH/2)};
-    const turret=createStructure('turret',Math.floor(c.x+3),Math.floor(c.y),true);
-    const enemies=[];for(let i=0;i<8;i++){const e=spawnEnemy(i%3===0?'armored':'lesser',1,0);if(e){e.x=c.x+6+(i%3)*.65;e.y=c.y-2.1+i*.58;e.path=[];e.pathIndex=0;e.pathTimer=999;enemies.push(e);}}
-    V39_TARGET.timer=0;v39AssignEnemyTargets(1);refreshUI(true);return{turret:turret?.id||null,enemies:enemies.length};
+  function v39SettingsAudit(){
+    const open=!systemPanel.classList.contains('hidden'),panels=systemPanelBody.querySelectorAll('.v32-panel').length,tabs=[...systemPanelBody.querySelectorAll('[data-v32-tab]')];
+    const ids=[...document.querySelectorAll('[id]')].map(el=>el.id),duplicates=[...new Set(ids.filter((id,index)=>ids.indexOf(id)!==index))];
+    return{passed:!open||(panels===1&&tabs.length===3&&tabs.filter(t=>t.classList.contains('active')).length===1&&duplicates.length===0&&MOBILE_V39.stats.settingsErrors===0),open,panels,tabs:tabs.map(t=>({key:t.getAttribute('data-v32-tab'),active:t.classList.contains('active')})),scrollTop:systemPanel.scrollTop,scrollMax:Math.max(0,systemPanel.scrollHeight-systemPanel.clientHeight),duplicates,errors:MOBILE_V39.stats.settingsErrors,jumps:MOBILE_V39.stats.settingsScrollJumps};
   }
-  window.__CYBER_SANCTUM_V39__={version:MOBILE_V39.version,state:()=>({build:v39Meta?.content||'',stats:{...MOBILE_V39.stats},panel:{...V39_PANEL},targetAudit:v39AuditTargets(),errors:MOBILE_V39.errors.slice(-12)}),prepareCombatAudit:v39PrepareCombatAudit,auditTurrets:v39AuditTurrets,auditTargets:v39AuditTargets,forceNarrative:()=>v38RenderNarrative(true),runScenario:async(difficulty='easy',route=false,maxSeconds=9000,step=.22)=>{const result=await v35RunScenario(difficulty,route,maxSeconds,step);return{...result,v39:{turrets:v39AuditTurrets(2,.1),targets:v39AuditTargets(),story:v37Story(),errors:MOBILE_V39.errors.slice(-12),stats:{...MOBILE_V39.stats}}};}};
-  // COMBAT_UI_TARGET_STABILITY_V39_END
+  function v39PerformanceAudit(){
+    const styles=document.querySelectorAll('#finalNarrativeTouchBalanceV38').length;
+    return{passed:styles===1&&MOBILE_V39.errors.length===0&&game.projectiles.length<=(MOBILE_AUTO_DEVICE?18:30)&&game.combatFx.length<=(MOBILE_AUTO_DEVICE?14:24),v38StyleCount:styles,projectiles:game.projectiles.length,combatFx:game.combatFx.length,effects:game.effects.length,liveEnemies:(game.enemies||[]).filter(e=>e&&e.hp>0).length,regularEnemyCap:v39RegularEnemyCap(),fps:Number((game.fps||0).toFixed(1)),errors:MOBILE_V39.errors.slice(-8),stats:{...MOBILE_V39.stats}};
+  }
+
+  async function v39RunScenario(difficulty='easy',routeEnabled=false,fastMode=false,maxGameSeconds=9000,step=.18){
+    const originalDefault=v23ApplyDefaultRun,previousPrefs={...MOBILE_V32.prefs},priorAudit=MOBILE_V30.auditMode;
+    const startStats={...MOBILE_V39.stats};
+    MOBILE_V39.targetCache.nextAt=-Infinity;MOBILE_V39.targetCache.candidates=[];MOBILE_V39.targetCache.loads.clear();v39TowerWatchAt=-Infinity;
+    MOBILE_V32.prefs.difficulty=difficulty;MOBILE_V32.prefs.fastMode=!!fastMode;MOBILE_V32.prefs.autoEnabled=true;MOBILE_V32.prefs.autoMode='adaptive';
+    v23ApplyDefaultRun=function(){
+      originalDefault();game.difficulty=difficulty;game.fastMode=!!fastMode;game.speed=1;
+      try{v23SyncEasyPerformanceRules();}catch(_){}
+      if(routeEnabled)v35ActivateRoute(true);
+    };
+    MOBILE_V30.auditMode=true;
+    const started=performance.now();
+    try{
+      const raw=await v23RunAutoAudit(maxGameSeconds,step);
+      const expectedWin=!(difficulty==='hard'&&!routeEnabled);
+      const observedWin=game.result==='승리',observedLoss=game.result==='패배';
+      const story=v39StoryAudit(),turrets=v39TurretAudit(),targets=v39TargetAudit();
+      const turretShotDelta=MOBILE_V39.stats.turretShots-(startStats.turretShots||0);
+      const resultMatches=expectedWin?observedWin:observedLoss;
+      const passed=resultMatches&&turretShotDelta>0&&story.passed&&targets.passed&&MOBILE_V39.errors.length===0;
+      return{...raw,version:MOBILE_V39.version,passed,expectedWin,observedWin,observedLoss,turretShotDelta,difficulty,routeEnabled,fastMode:!!fastMode,baseRatio:game.base?Number((game.base.hp/Math.max(1,game.base.maxHp)).toFixed(4)):0,turrets,targets,story,settings:v39SettingsAudit(),performance:v39PerformanceAudit(),deltaStats:Object.fromEntries(Object.keys(MOBILE_V39.stats).map(k=>[k,MOBILE_V39.stats[k]-(startStats[k]||0)])),wallMilliseconds:Math.round(performance.now()-started)};
+    }catch(error){v39Error('scenario',error);return{version:MOBILE_V39.version,passed:false,difficulty,routeEnabled,fastMode:!!fastMode,error:String(error?.message||error)};}
+    finally{v23ApplyDefaultRun=originalDefault;Object.assign(MOBILE_V32.prefs,previousPrefs);MOBILE_V30.auditMode=priorAudit;}
+  }
+  async function v39RunRegression(){
+    const cases=[
+      ['easy-default-standard','easy',false,false,7800,.20],
+      ['easy-default-fast','easy',false,true,5200,.20],
+      ['normal-route-standard','normal',true,false,8600,.18],
+      ['normal-route-fast','normal',true,true,6200,.18],
+      ['hard-no-route-standard','hard',false,false,5200,.18],
+      ['hard-route-standard','hard',true,false,9400,.16],
+      ['hard-route-fast','hard',true,true,7200,.16],
+    ];
+    const results=[];
+    for(const [name,difficulty,route,fast,max,step] of cases){const result=await v39RunScenario(difficulty,route,fast,max,step);results.push({name,...result});}
+    const summary={version:MOBILE_V39.version,passed:results.every(result=>result.passed),results,errors:MOBILE_V39.errors.slice(-12),performance:v39PerformanceAudit()};
+    MOBILE_V39.regression=summary;return summary;
+  }
+  async function v39SimulateLive(seconds=30,step=.12){
+    let simulated=0;
+    while(!game.gameOver&&simulated<seconds){for(let i=0;i<25&&!game.gameOver&&simulated<seconds;i++){update(step);simulated+=step;}await new Promise(resolve=>setTimeout(resolve,0));}
+    refreshUI(true);return{simulated:Number(simulated.toFixed(2)),wave:game.wave,enemies:game.enemies.length,turrets:v39TurretAudit(),targets:v39TargetAudit(),settings:v39SettingsAudit(),story:v39StoryAudit(),performance:v39PerformanceAudit()};
+  }
+
+  window.__CYBER_SANCTUM_V39__={
+    version:MOBILE_V39.version,
+    state:()=>({build:v39Meta?.content||'',difficulty:game.difficulty,fastMode:game.fastMode,wave:game.wave,result:game.result,stats:{...MOBILE_V39.stats},turretByType:{...MOBILE_V39.turretByType},targetByKind:{...MOBILE_V39.targetByKind},errors:MOBILE_V39.errors.slice(-12)}),
+    auditTurrets:v39TurretAudit,auditTargets:v39TargetAudit,auditSettings:v39SettingsAudit,auditStory:v39StoryAudit,auditPerformance:v39PerformanceAudit,
+    auditTurretCatalog:v39TurretCatalogAudit,runScenario:v39RunScenario,runRegression:v39RunRegression,simulateLive:v39SimulateLive,lastRegression:()=>MOBILE_V39.regression,
+    forceTowerCheck:()=>{v39TowerWatchAt=-Infinity;v39TowerWatchdog();return v39TurretAudit();},
+    refreshPanel:()=>{MOBILE_V32.panelKey='';renderSystemPanel(true);return v39SettingsAudit();},
+  };
+  if(window.__CYBER_SANCTUM_V38__)window.__CYBER_SANCTUM_V38__.version=MOBILE_V39.version;
+  if(window.__CYBER_SANCTUM_V37__)window.__CYBER_SANCTUM_V37__.version=MOBILE_V39.version;
+  if(window.__CYBER_SANCTUM_V36__)window.__CYBER_SANCTUM_V36__.version=MOBILE_V39.version;
+  if(window.__CYBER_SANCTUM_V35__)window.__CYBER_SANCTUM_V35__.version=MOBILE_V39.version;
+  // FINAL_COMBAT_TARGET_UI_STABILITY_V39_END
+
+
+  // HARD_FINAL_DUEL_STORY_BALANCE_V40_START
+  const MOBILE_V40 = {
+    version:'mobile-hard-final-duel-story-v40',
+    balance:{
+      hardEnemyHp:1.72,
+      hardFinalBossSpawnHp:1.62,
+      hardFinalBossTheftHp:1.12,
+      duelMinimumSeconds:30,
+      duelFloorAtMinimum:.18,
+      duelPerHitCap:.026,
+      preDuelBossFloor:.94,
+      sealTotalSeconds:18.4,
+      awakeningDelaySeconds:3.4,
+      pursuitNarrativeSeconds:2.8,
+      pursuitStageSeconds:7.2,
+      heroBasicRange:1.94,
+      heroAwakenedRange:2.08,
+      heroSplashMax:.82,
+      lateSkillRange:3.15,
+      lateSkillSplash:1.28,
+      lifestealNormal:.10,
+      lifestealHard:.14,
+      lifestealAwakened:.18,
+    },
+    duel:{bossId:null,spawnAt:-1,startedAt:-1,endedAt:-1,duration:0,minimumHeld:false,oneVsOne:false,damageToBoss:0,heroHealing:0,awakenedAt:-1,arenaCleared:false},
+    timeline:{sealStage:0,releaseAt:-1,pursuitShown:false,pursuitShifted:false,angerShown:false,halfShown:false,quarterShown:false,recoveryShown:false},
+    fx:[],
+    ui:{scrollByTab:{ops:0,auto:0,commands:0},restoring:false,token:0,userUntil:-Infinity,observer:null},
+    errors:[],
+    stats:{hardEnemiesScaled:0,finalBossesScaled:0,damageCaps:0,lifestealPulses:0,meleeRejects:0,lateSkillCasts:0,narrativeEvents:0,duels:0,settingsScrollRestores:0,settingsMutationRestores:0},
+  };
+  const v40Meta=document.querySelector('meta[name="build-version"]');
+  if(v40Meta)v40Meta.content=MOBILE_V40.version;
+  DIFFICULTY_REGISTRY.hard.enemyHp=MOBILE_V40.balance.hardEnemyHp;
+  if(typeof MOBILE_V39==='object')MOBILE_V39.version=MOBILE_V40.version;
+  if(typeof MOBILE_V38==='object')MOBILE_V38.version=MOBILE_V40.version;
+  if(typeof MOBILE_V37==='object')MOBILE_V37.version=MOBILE_V40.version;
+  if(typeof MOBILE_V36==='object')MOBILE_V36.version=MOBILE_V40.version;
+  if(typeof MOBILE_V35==='object')MOBILE_V35.version=MOBILE_V40.version;
+  MOBILE_V37.balance.hardSealSeconds=MOBILE_V40.balance.sealTotalSeconds;
+
+  function v40Error(scope,error){
+    const item={scope:String(scope),message:String(error?.message||error||'unknown'),at:Date.now()};
+    MOBILE_V40.errors.push(item);if(MOBILE_V40.errors.length>30)MOBILE_V40.errors.splice(0,MOBILE_V40.errors.length-30);
+    try{console.error('[v40]',item.scope,item.message);}catch(_){}
+    return item;
+  }
+  function v40IsFinalBoss(enemy){return !!(enemy&&enemy.hp>0&&ENEMY_REGISTRY[enemy.type]?.finalBoss);}
+  function v40FinalBoss(){return (game.enemies||[]).find(v40IsFinalBoss)||null;}
+  function v40HeroSource(enemy,source){
+    const hero=v35Hero();if(!hero||!v35Route().active)return false;
+    const text=String(source||'');
+    if(/의목사|발도|월섬|은월|실버|천검|EGO|백은|환도/.test(text))return true;
+    return (text==='unit'||text==='unitSplash')&&hero.attackTarget===enemy&&dist2(hero.x,hero.y,enemy.x,enemy.y)<=4.2**2;
+  }
+  function v40ActualDamagePrediction(enemy,amount){
+    const data=ENEMY_REGISTRY[enemy?.type]||{};
+    const mark=enemy?.markTimer>0?1.35:1;
+    return Math.max(1,(Number(amount)||0)-(data.armor||0))*mark;
+  }
+  function v40AmountForActual(enemy,actual){
+    const data=ENEMY_REGISTRY[enemy?.type]||{};
+    const mark=enemy?.markTimer>0?1.35:1;
+    return Math.max(0,actual/mark+(data.armor||0));
+  }
+  function v40PushFx(kind,x,y,tx=x,ty=y,size=1,life=.8){
+    if(typeof MOBILE_V30==='object'&&MOBILE_V30.auditMode)return;
+    MOBILE_V40.fx.push({kind,x,y,tx,ty,size,life,maxLife:life,seed:Math.random()*Math.PI*2});
+    const cap=MOBILE_AUTO_DEVICE?12:18;if(MOBILE_V40.fx.length>cap)MOBILE_V40.fx.splice(0,MOBILE_V40.fx.length-cap);
+  }
+  function v40StoryEvent(code,text,priority=5,duration=6200){
+    MOBILE_V40.stats.narrativeEvents++;
+    const event=v37StoryEvent(code,text,priority,duration);
+    try{v38RenderNarrative(true);}catch(_){}
+    return event;
+  }
+
+  // Hard mode gains durability, not additional attack power.
+  const v40SpawnEnemyPrev=spawnEnemy;
+  spawnEnemy=function(type,waveIndex,bossLevel=0){
+    const enemy=v40SpawnEnemyPrev(type,waveIndex,bossLevel);
+    if(enemy&&game.difficulty==='hard')MOBILE_V40.stats.hardEnemiesScaled++;
+    return enemy;
+  };
+  const v40SpawnNightmareBossPrev=spawnNightmareBoss;
+  spawnNightmareBoss=function(zone){
+    const boss=v40SpawnNightmareBossPrev(zone);
+    if(boss&&game.difficulty==='hard'&&ENEMY_REGISTRY[boss.type]?.finalBoss&&!boss.v40FinalHpScaled){
+      boss.v40FinalHpScaled=true;
+      boss.maxHp=Math.round(boss.maxHp*MOBILE_V40.balance.hardFinalBossSpawnHp);
+      boss.hp=boss.maxHp;
+      boss.v40OriginalDamage=boss.damage;
+      MOBILE_V40.duel.bossId=boss.id;MOBILE_V40.duel.spawnAt=game.defenseTime;
+      MOBILE_V40.stats.finalBossesScaled++;
+    }
+    return boss;
+  };
+
+  // Keep the hero fundamentally melee even after route upgrades.
+  const v40RecomputePrev=recomputeUnitRegistry77;
+  recomputeUnitRegistry77=function(){
+    const result=v40RecomputePrev();
+    const state=v35Route(),data=UNIT_REGISTRY.hwandoHero;
+    if(!state.active||!data)return result;
+    data.range=Math.min(Number(data.range)||1.7,state.hardLastStand?MOBILE_V40.balance.heroAwakenedRange:MOBILE_V40.balance.heroBasicRange);
+    data.splash=Math.min(Number(data.splash)||0,MOBILE_V40.balance.heroSplashMax);
+    if(game.difficulty==='hard'){
+      const tier=clamp(state.tier,1,state.maxTier);
+      if(state.hardLastStand){
+        data.hp=clamp(Number(data.hp)||1200,1450,1780);
+        data.damage=clamp(Number(data.damage)||148,142,156);
+        data.fireRate=Math.max(Number(data.fireRate)||.49,.48);
+        data.armor=clamp(Number(data.armor)||15,14,21);
+      }else{
+        data.hp=clamp(Number(data.hp)||900,820,1160);
+        data.damage=Math.min(Number(data.damage)||95,106);
+        data.fireRate=Math.max(Number(data.fireRate)||.64,.61);
+        data.armor=Math.min(Number(data.armor)||12,15);
+      }
+      data.v40BalancedTier=tier;
+    }
+    return result;
+  };
+
+  // Final duel damage pacing and hero lifesteal.
+  const v40DamageEnemyPrev=damageEnemy;
+  damageEnemy=function(enemy,amount,source='unknown'){
+    if(!enemy||enemy.hp<=0)return v40DamageEnemyPrev(enemy,amount,source);
+    const before=enemy.hp,route=v35Route(),story=v37Story(),heroHit=v40HeroSource(enemy,source);
+    let adjusted=Number(amount)||0;
+    if(heroHit&&game.difficulty==='hard'){
+      const data=ENEMY_REGISTRY[enemy.type]||{};
+      const predicted=v40ActualDamagePrediction(enemy,adjusted);
+      let cap=data.finalBoss?enemy.maxHp*MOBILE_V40.balance.duelPerHitCap:(data.boss||enemy.nightmareBoss||enemy.midbossWaveAssault)?enemy.maxHp*.075:Math.max(30,enemy.maxHp*.34);
+      if(predicted>cap){adjusted=v40AmountForActual(enemy,cap);MOBILE_V40.stats.damageCaps++;}
+    }
+    if(v40IsFinalBoss(enemy)&&game.difficulty==='hard'&&route.active){
+      const now=game.defenseTime;
+      let floor=0,maxActual=enemy.maxHp*MOBILE_V40.balance.duelPerHitCap;
+      if(MOBILE_V40.duel.startedAt<0||story.sealed){
+        floor=enemy.maxHp*MOBILE_V40.balance.preDuelBossFloor;
+        maxActual=enemy.maxHp*.009;
+      }else{
+        const elapsed=Math.max(0,now-MOBILE_V40.duel.startedAt);
+        if(elapsed<MOBILE_V40.balance.duelMinimumSeconds){
+          const progress=elapsed/MOBILE_V40.balance.duelMinimumSeconds;
+          const ratio=1-(1-MOBILE_V40.balance.duelFloorAtMinimum)*progress;
+          floor=enemy.maxHp*ratio;
+        }
+      }
+      const predicted=v40ActualDamagePrediction(enemy,adjusted);
+      const safe=Math.max(0,Math.min(predicted,maxActual,enemy.hp-floor));
+      if(safe<=0){MOBILE_V40.stats.damageCaps++;return 0;}
+      if(safe<predicted){adjusted=v40AmountForActual(enemy,safe);MOBILE_V40.stats.damageCaps++;}
+    }
+    const result=v40DamageEnemyPrev(enemy,adjusted,source);
+    const after=Math.max(0,enemy.hp||0),dealt=Math.max(0,before-after);
+    if(heroHit&&dealt>0){
+      const hero=v35Hero();
+      if(hero&&hero.hp>0){
+        const rate=route.hardLastStand?MOBILE_V40.balance.lifestealAwakened:game.difficulty==='hard'?MOBILE_V40.balance.lifestealHard:MOBILE_V40.balance.lifestealNormal;
+        const heal=Math.min(hero.maxHp*.04,dealt*rate);
+        if(heal>0){hero.hp=Math.min(hero.maxHp,hero.hp+heal);MOBILE_V40.duel.heroHealing+=heal;MOBILE_V40.stats.lifestealPulses++;if(game.defenseTime>=(hero.v40LifeFxAt||0)){hero.v40LifeFxAt=game.defenseTime+.85;v40PushFx('lifesteal',hero.x,hero.y,enemy.x,enemy.y,1,.55);}}
+      }
+    }
+    if(v40IsFinalBoss(enemy)||enemy.id===MOBILE_V40.duel.bossId)MOBILE_V40.duel.damageToBoss+=dealt;
+    if(before>0&&enemy.hp<=0&&enemy.id===MOBILE_V40.duel.bossId&&MOBILE_V40.duel.startedAt>=0){
+      MOBILE_V40.duel.endedAt=game.defenseTime;MOBILE_V40.duel.duration=Math.max(0,MOBILE_V40.duel.endedAt-MOBILE_V40.duel.startedAt);MOBILE_V40.duel.minimumHeld=MOBILE_V40.duel.duration>=MOBILE_V40.balance.duelMinimumSeconds-.15;
+    }
+    return result;
+  };
+
+  // All route skills are local melee techniques. Late skills receive distinct lightweight VFX.
+  v35CastSilverCrescent=function(hero,manual=false){
+    const state=v35Route();if(!hero||v37HeroSealed(hero)||!state.active||state.tier<2)return false;
+    const target=v35NearestEnemy(hero.x,hero.y,2.95);if(!target){MOBILE_V40.stats.meleeRejects++;return false;}
+    const damage=(UNIT_REGISTRY.hwandoHero.damage||48)*(1.02+state.tier*.018)+12;
+    damageEnemy(target,damage,'의목사 은월 근접참');
+    let hit=1;for(const enemy of [...game.enemies]){if(enemy!==target&&enemy.hp>0&&dist2(target.x,target.y,enemy.x,enemy.y)<=.86**2){damageEnemy(enemy,damage*.36,'의목사 은월 잔광');if(++hit>=4)break;}}
+    v35PushSlash(hero.x,hero.y,target.x,target.y,.82,.40,'crescent');v40PushFx('crescent',hero.x,hero.y,target.x,target.y,1,.55);addEffect(target.x,target.y,`은월 근접참 ${hit}`,'#eefaff');
+    hero.v35SkillCd.crescent=Math.max(3.8,6.8-state.tier*.13);return true;
+  };
+  v35CastSilverFlame=function(hero,manual=false){
+    const state=v35Route();if(!hero||v37HeroSealed(hero)||!state.active||state.tier<4)return false;
+    const radius=Math.min(2.45,2.05+state.tier*.025),targets=v37EnemiesNear(hero.x,hero.y,radius,8);if(!targets.length){MOBILE_V40.stats.meleeRejects++;return false;}
+    const damage=(UNIT_REGISTRY.hwandoHero.damage||48)*(1.08+state.tier*.018)+10;
+    for(const enemy of targets){damageEnemy(enemy,damage,'의목사 은염 근접진');enemy.slowTimer=Math.max(enemy.slowTimer||0,1.35);enemy.slowFactor=Math.min(enemy.slowFactor||1,.76);}
+    hero.hp=Math.min(hero.maxHp,hero.hp+Math.min(hero.maxHp*.08,targets.length*8));addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,'#eefaff',radius,.68);v40PushFx('flame',hero.x,hero.y,hero.x,hero.y,radius,.8);addEffect(hero.x,hero.y,`은염 근접진 ${targets.length}`,'#dff7ff');
+    hero.v35SkillCd.flame=Math.max(5.8,10.4-state.tier*.19);return true;
+  };
+  v35CastSilverTempest=function(hero,manual=false){
+    const state=v35Route();if(!hero||v37HeroSealed(hero)||!state.active||state.tier<7)return false;
+    const radius=2.95,targets=v37EnemiesNear(hero.x,hero.y,radius,Math.min(5,2+Math.floor(state.tier/3)));if(!targets.length){MOBILE_V40.stats.meleeRejects++;return false;}
+    const damage=(UNIT_REGISTRY.hwandoHero.damage||48)*(1.20+state.tier*.018)+18;let origin={x:hero.x,y:hero.y};
+    for(let i=0;i<targets.length;i++){const target=targets[i];damageEnemy(target,damage,'의목사 백은 연화검');for(const other of [...game.enemies]){if(other!==target&&other.hp>0&&dist2(target.x,target.y,other.x,other.y)<=.72**2)damageEnemy(other,damage*.24,'의목사 연화 잔파');}v35PushSlash(origin.x,origin.y,target.x,target.y,.68,.36+i*.025,'tempest');origin={x:target.x,y:target.y};}
+    v40PushFx('tempest',hero.x,hero.y,targets[0].x,targets[0].y,2.6,1.0);addEffect(hero.x,hero.y,`백은 연화검 ${targets.length}연참`,'#ffffff');hero.v35SkillCd.tempest=Math.max(9.8,15.8-state.tier*.28);MOBILE_V40.stats.lateSkillCasts++;return true;
+  };
+  v35CastEgoReclaim=function(hero,manual=false){
+    const state=v35Route();if(!hero||v37HeroSealed(hero)||!state.active||state.tier<10)return false;
+    const carrier=v35EgoCarrier();let target=null;
+    if(carrier&&dist2(hero.x,hero.y,carrier.x,carrier.y)<=MOBILE_V40.balance.lateSkillRange**2)target=carrier;
+    if(!target)target=v35NearestEnemy(hero.x,hero.y,MOBILE_V40.balance.lateSkillRange);
+    if(!target){MOBILE_V40.stats.meleeRejects++;return false;}
+    const damage=(UNIT_REGISTRY.hwandoHero.damage||48)*(carrier?1.52:1.34)+(carrier?34:22);damageEnemy(target,damage,carrier?'의목사 EGO 환수 근접검':'의목사 백은 종결 근접검');
+    let hit=1;for(const enemy of [...game.enemies]){if(enemy!==target&&enemy.hp>0&&dist2(target.x,target.y,enemy.x,enemy.y)<=MOBILE_V40.balance.lateSkillSplash**2){damageEnemy(enemy,damage*.26,'의목사 EGO 근접 파문');if(++hit>=5)break;}}
+    v35PushSlash(hero.x,hero.y,target.x,target.y,1.1,.60,'reclaim');v40PushFx('reclaim',hero.x,hero.y,target.x,target.y,MOBILE_V40.balance.lateSkillSplash,1.15);addEffect(target.x,target.y,carrier?'EGO 환수검':'백은 종결참','#ffffff');hero.v35SkillCd.reclaim=Math.max(13.5,22-state.tier*.42);MOBILE_V40.stats.lateSkillCasts++;return true;
+  };
+  v35HardSilverPursuit=function(hero){
+    const state=v35Route();if(!hero||v37HeroSealed(hero)||!state.active||game.difficulty!=='hard'||state.tier<10)return false;
+    if(game.defenseTime<(hero.v40PursuitAt||0))return false;hero.v40PursuitAt=game.defenseTime+(state.hardLastStand?1.05:1.35);
+    const targets=v37EnemiesNear(hero.x,hero.y,3.15,state.hardLastStand?4:3);if(!targets.length){MOBILE_V40.stats.meleeRejects++;return false;}
+    const data=UNIT_REGISTRY.hwandoHero||{},flat=(Number(data.damage)||80)*(state.hardLastStand?.72:.58)+14;let hit=0;
+    for(const enemy of targets){const ed=ENEMY_REGISTRY[enemy.type]||{};const ratio=ed.finalBoss?.0032:(ed.boss||enemy.nightmareBoss)?.018:.15;damageEnemy(enemy,Math.max(flat,(enemy.maxHp||enemy.hp)*ratio),state.hardLastStand?'의목사 각성 근접 추격검':'의목사 근접 추격검');if(hit<4)v35PushSlash(hero.x,hero.y,enemy.x,enemy.y,.66,.34+hit*.025,'tempest');hit++;}
+    if(hit)v40PushFx('pursuit',hero.x,hero.y,targets[0].x,targets[0].y,2.2,.72);return hit>0;
+  };
+  v37LocalPressureSweep=function(hero){
+    const state=v35Route(),story=v37Story();if(!hero||v37HeroSealed(hero)||!state.active||state.tier<3||game.paused||game.gameOver)return false;
+    if(game.defenseTime<(story.pressureAt||0))return false;const nearby=v37EnemiesNear(hero.x,hero.y,2.72,6);if(nearby.length<3)return false;
+    const damage=(UNIT_REGISTRY.hwandoHero.damage||48)*.58+8;for(const enemy of nearby)damageEnemy(enemy,damage,'의목사 근접 압축참');story.pressureAt=game.defenseTime+1.35;v40PushFx('pressure',hero.x,hero.y,hero.x,hero.y,2.6,.58);return true;
+  };
+  v37UpdateHeroPressureSlash=function(dt){
+    const state=v35Route(),hero=v35Hero();if(!state.active||!state.combatAssist||state.tier<2||!hero||v37HeroSealed(hero)||game.paused||game.gameOver||v35UnitManualLocked(hero))return;
+    if(game.defenseTime<(hero.v40PressureAt||0))return;const target=v35NearestEnemy(hero.x,hero.y,3.05);if(!target)return;
+    const damage=(UNIT_REGISTRY.hwandoHero.damage||48)*.48+7;damageEnemy(target,damage,'의목사 백은 근접파');for(const enemy of [...game.enemies]){if(enemy!==target&&enemy.hp>0&&dist2(target.x,target.y,enemy.x,enemy.y)<=.72**2){damageEnemy(enemy,damage*.28,'의목사 근접파 여파');break;}}
+    hero.v40PressureAt=game.defenseTime+.92;v35PushSlash(hero.x,hero.y,target.x,target.y,.52,.30,'crescent');
+  };
+
+  // Replace the hard-story sequence with readable staged timing.
+  v37BeginSeal=function(boss,reason='악몽 군주의 거짓 몽세'){
+    const state=v35Route(),story=v37Story(),hero=v35Hero();
+    if(!state.active||game.difficulty!=='hard'||state.egoStolen||story.sealed||!hero)return false;
+    story.phase='sealed';story.sealed=true;story.sealBossId=boss?.id||null;story.sealBossName=ENEMY_REGISTRY[boss?.type]?.name||'악몽 군주';story.sealStartedAt=game.defenseTime;story.pendingTheftAt=game.defenseTime+MOBILE_V40.balance.sealTotalSeconds;story.sealWarningShown=true;
+    story.sealFixedX=hero.x;story.sealFixedY=hero.y;story.v40Stage='temptation';hero.v37Sealed=true;hero.v37SealReason=reason;hero.attackTarget=null;hero.moveOrder=null;hero.attackMoveDestination=null;hero.orderType='sealed';hero.path=[];hero.pathIndex=0;hero.manualOverrideUntil=Infinity;
+    MOBILE_V40.timeline.sealStage=0;MOBILE_V40.timeline.releaseAt=-1;MOBILE_V37.stats.seals++;
+    addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,'#ff4fa8',4,1);v40PushFx('seal',hero.x,hero.y,hero.x,hero.y,3.4,1.4);addEffect(hero.x,hero.y,'악몽의 꾀임 · 몽세 봉인','#ff86c8');
+    v40StoryEvent('seal',`${story.sealBossName}가 거짓 몽세를 펼친다. 의목사의 검로가 봉인됐다.`,5,6500);
+    try{showCounterBannerCF9('거짓 몽세 · 의목사 봉인','EGO 강탈식까지 시간이 남았습니다. 본부가 버텨야 합니다.',4.6);}catch(_){}
+    return true;
+  };
+  v37CompleteHardTheft=function(boss){
+    const state=v35Route(),story=v37Story(),hero=v35Hero();if(!state.active||game.difficulty!=='hard'||state.egoStolen)return false;
+    boss=boss&&boss.hp>0?boss:v40FinalBoss();state.egoStolen=true;state.egoRecovered=false;state.hardLastStand=true;state.tier=Math.max(state.tier,10);state.egoCarrierId=boss?.id||null;
+    MOBILE_V35.stats.hardEgoThefts++;MOBILE_V37.stats.egoThefts++;
+    for(const structure of [...game.structures]){if(structure===game.base)continue;try{removeStructure(structure,false);}catch(error){v40Error('hard-remove-structure',error);}}
+    if(game.base){game.base.hp=1;game.base.v35Ruined=true;game.base.v35EgoLost=true;game.base.v37StoryRuin=true;}
+    game.workers=[];game.units=hero?[hero]:[];const ego=game.egoCore||v15EnsureEgoCore();if(ego){ego.hp=0;ego.active=false;ego.stolen=true;}
+    if(boss){boss.v35EgoCarrier=true;boss.v37EgoCarrier=true;if(!boss.v40TheftScaled){boss.v40TheftScaled=true;boss.maxHp=Math.round(boss.maxHp*MOBILE_V40.balance.hardFinalBossTheftHp);boss.hp=boss.maxHp;}boss.damage=boss.v40OriginalDamage||boss.damage;boss.attackTarget=hero||boss.attackTarget;}
+    try{const counter=stateCounterCF9();if(counter)counter.coreDestroyed=true;}catch(_){}
+    story.phase='ego-stolen';story.sealed=true;story.awakened=false;story.egoStolenAt=game.defenseTime;story.pendingTheftAt=-1;story.v40Stage='emptiness';
+    MOBILE_V40.timeline.releaseAt=game.defenseTime+MOBILE_V40.balance.awakeningDelaySeconds;
+    if(hero){hero.v37Sealed=true;hero.hp=hero.maxHp;hero.attackTarget=null;hero.orderType='sealed';hero.manualOverrideUntil=Infinity;}
+    v40StoryEvent('ego-theft','본부의 EGO가 끊겼다. 의목사는 봉인 속에서 허탈함과 분노를 삼킨다.',5,6800);
+    try{showCounterBannerCF9('EGO 강탈','본부 붕괴 · 의목사의 봉인이 안쪽에서 갈라지기 시작합니다.',4.8);}catch(_){}
+    recomputeUnitRegistry77();return true;
+  };
+
+  function v40ReleaseHero(){
+    const state=v35Route(),story=v37Story(),hero=v35Hero(),boss=v40FinalBoss();if(!story.sealed||!state.egoStolen||story.awakened)return false;
+    story.sealed=false;story.phase='awakened';story.awakened=true;story.awakenedAt=game.defenseTime;story.v40Stage='awakening';MOBILE_V40.timeline.releaseAt=-1;
+    if(hero){hero.v37Sealed=false;hero.v37Awakened=true;hero.manualOverrideUntil=0;hero.hp=hero.maxHp;hero.attackTarget=boss||v35NearestEnemy(hero.x,hero.y,Infinity);hero.orderType=hero.attackTarget?'attack':'idle';hero.path=[];hero.pathIndex=0;hero.awakeningCharge=100;hero.v40PursuitStartedAt=game.defenseTime;try{awakenHwandoFinal(hero,true);}catch(_){};}
+    v35SyncHeroStats(1);if(hero){addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,'#ffffff',7.2,1.45);v40PushFx('awakening',hero.x,hero.y,hero.x,hero.y,6.4,1.8);addEffect(hero.x,hero.y,'봉인 파쇄 · 백은 각성','#ffffff');}
+    MOBILE_V37.stats.sealReleases++;MOBILE_V40.duel.startedAt=-1;MOBILE_V40.duel.endedAt=-1;MOBILE_V40.duel.duration=0;MOBILE_V40.duel.oneVsOne=false;MOBILE_V40.duel.awakenedAt=game.defenseTime;MOBILE_V40.stats.duels++;
+    v40StoryEvent('theft-awaken','봉인이 깨졌다. 허탈함은 분노로 바뀌고, 의목사가 EGO의 맥동을 추적한다.',5,7200);
+    try{showCounterBannerCF9('백은 각성','근접 결전 개시 · 악몽 군주에게서 EGO를 되찾으십시오.',4.6);}catch(_){}
+    recomputeUnitRegistry77();return true;
+  }
+
+  function v40StageHeroNearFinalBoss(hero,boss){
+    if(!hero||!boss||hero.hp<=0||boss.hp<=0)return false;
+    const candidates=[[0,-3],[0,3],[-3,0],[3,0],[-2,-2],[2,-2],[-2,2],[2,2],[-4,0],[4,0]];
+    let chosen=null;
+    for(const [ox,oy] of candidates){
+      const cx=clamp(Math.floor(boss.x+ox),0,CONFIG.mapW-1),cy=clamp(Math.floor(boss.y+oy),0,CONFIG.mapH-1);
+      if(isWalkableFor(cx,cy,'ally')){chosen={x:cx+.5,y:cy+.5};break;}
+    }
+    if(!chosen){const cell=nearestWalkableCell(Math.floor(boss.x-3),Math.floor(boss.y),hero.id%7);chosen={x:cell.x+.5,y:cell.y+.5};}
+    const from={x:hero.x,y:hero.y};hero.x=chosen.x;hero.y=chosen.y;hero.path=[];hero.pathIndex=0;hero.moveOrder=null;hero.attackMoveDestination=null;hero.attackTarget=boss;hero.orderType='attack';hero.manualOverrideUntil=0;hero.v40PursuitShiftedAt=game.defenseTime;
+    v40PushFx('pursuit',from.x,from.y,hero.x,hero.y,3.2,.9);v40PushFx('awakening',hero.x,hero.y,hero.x,hero.y,3.8,1.05);addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,'#eefaff',4.2,.86);addEffect(hero.x,hero.y,'백은 왕좌도약','#ffffff');
+    return true;
+  }
+
+  function v40PurgeFinalArena(boss){
+    if(!boss||game.wave<nowMaxWave()||!v35Route().egoStolen)return 0;
+    let removed=0;
+    game.enemies=(game.enemies||[]).filter(enemy=>{
+      if(!enemy||enemy.hp<=0)return false;
+      if(enemy===boss)return true;
+      const data=ENEMY_REGISTRY[enemy.type]||{};
+      if(data.finalBoss)return true;
+      removed++;enemy.hp=0;return false;
+    });
+    if(Array.isArray(game.enemyBaseBuildings))game.enemyBaseBuildings=[];
+    if(removed>0&&!MOBILE_V40.duel.arenaCleared){MOBILE_V40.duel.arenaCleared=true;addEffect(boss.x,boss.y,`봉인 파쇄 · 왕좌 장막 ${removed} 붕괴`,'#eefaff');v40PushFx('awakening',boss.x,boss.y,boss.x,boss.y,4.4,1.2);}
+    return removed;
+  }
+
+  function v40UpdateTimeline(dt){
+    if(!MOBILE_UI_V22.introStarted||game.paused)return;
+    const story=v37Story(),state=v35Route(),hero=v35Hero(),boss=v40FinalBoss(),now=game.defenseTime;
+    if(story.sealed&&story.sealStartedAt>=0&&!state.egoStolen){
+      const elapsed=now-story.sealStartedAt;
+      if(elapsed>=4.7&&MOBILE_V40.timeline.sealStage<1){MOBILE_V40.timeline.sealStage=1;story.v40Stage='sealed';v40StoryEvent('seal-warning','거짓 몽세가 의목사의 혼을 묶었다. 본부의 EGO 회선이 흔들린다.',5,6100);}
+      if(elapsed>=10.4&&MOBILE_V40.timeline.sealStage<2){MOBILE_V40.timeline.sealStage=2;story.v40Stage='ego-crack';v40StoryEvent('ego-crack','EGO 회선에 균열이 번진다. 의목사는 봉인 안에서 검을 다시 쥔다.',5,6200);}
+      if(elapsed>=15.7&&MOBILE_V40.timeline.sealStage<3){MOBILE_V40.timeline.sealStage=3;story.v40Stage='last-warning';v40StoryEvent('theft-warning','강탈식이 완성된다. 마지막 순간, 은빛 불꽃이 봉인을 밀어낸다.',5,5900);}
+    }
+    if(state.egoStolen&&story.sealed&&MOBILE_V40.timeline.releaseAt>0&&now>=MOBILE_V40.timeline.releaseAt)v40ReleaseHero();
+    if(story.awakened&&!story.reclaimed&&boss){
+      v40PurgeFinalArena(boss);
+      const awakeElapsed=Math.max(0,now-(story.awakenedAt>=0?story.awakenedAt:now));
+      if(awakeElapsed>=MOBILE_V40.balance.pursuitNarrativeSeconds&&!MOBILE_V40.timeline.pursuitShown){
+        MOBILE_V40.timeline.pursuitShown=true;story.v40Stage='pursuit';v40StoryEvent('throne-path','EGO의 맥동이 왕좌로 은빛 길을 연다. 의목사가 악몽 군주에게 접근한다.',4,4800);
+      }
+      if(hero&&MOBILE_V40.duel.startedAt<0&&awakeElapsed>=MOBILE_V40.balance.pursuitStageSeconds&&!MOBILE_V40.timeline.pursuitShifted){
+        MOBILE_V40.timeline.pursuitShifted=true;
+        if(dist2(hero.x,hero.y,boss.x,boss.y)>4.2**2)v40StageHeroNearFinalBoss(hero,boss);
+        else{hero.attackTarget=boss;hero.orderType='attack';hero.path=[];hero.pathIndex=0;hero.manualOverrideUntil=0;}
+      }
+      if(MOBILE_V40.duel.startedAt<0&&hero&&awakeElapsed>=MOBILE_V40.balance.pursuitStageSeconds&&dist2(hero.x,hero.y,boss.x,boss.y)<=3.65**2){
+        MOBILE_V40.duel.startedAt=now;MOBILE_V40.duel.oneVsOne=(game.enemies||[]).filter(e=>e&&e.hp>0&&!e.enemyBuilding).length===1;
+        story.v40Stage='duel';v40StoryEvent('duel-start','검끝이 닿았다. 의목사와 악몽 군주의 1대1 근접 결전이 시작된다.',5,6200);
+      }
+    }
+    if(story.awakened&&!story.reclaimed&&MOBILE_V40.duel.startedAt>=0){
+      const elapsed=now-MOBILE_V40.duel.startedAt;
+      if(elapsed>=5&&!MOBILE_V40.timeline.angerShown){MOBILE_V40.timeline.angerShown=true;story.v40Stage='anger';v40StoryEvent('reclaim-vow','분노를 검끝에 눌러 담는다. 가까이 붙어 EGO를 되찾는다.',5,6200);}
+      if(boss){const ratio=boss.hp/Math.max(1,boss.maxHp);if(ratio<=.55&&!MOBILE_V40.timeline.halfShown){MOBILE_V40.timeline.halfShown=true;story.v40Stage='resolve';v40StoryEvent('duel-half','악몽의 장막이 갈라진다. 의목사는 물러서지 않는다.',4,5600);}if(ratio<=.32&&!MOBILE_V40.timeline.quarterShown){MOBILE_V40.timeline.quarterShown=true;story.v40Stage='reclaim';story.finalBossLowShown=true;v40StoryEvent('reclaim-window','EGO의 맥동이 손에 닿는다. 마지막 근접참으로 환수한다.',5,6200);}}
+    }
+    if(state.hardLastStand&&hero&&!story.sealed&&!game.gameOver){hero.hp=Math.min(hero.maxHp,hero.hp+hero.maxHp*.0075*dt);}
+  }
+
+  const v40DialoguePrev=v38NarrativeText;
+  v38NarrativeText=function(){
+    const story=v37Story(),stage=story.v40Stage;
+    if(stage==='temptation')return '악몽 군주의 거짓 몽세가 검로를 흐린다. 의목사는 꾀임을 견딘다.';
+    if(stage==='sealed')return '의목사의 혼이 봉인됐다. 본부 EGO 회선이 흔들리기 시작한다.';
+    if(stage==='ego-crack')return 'EGO 회선에 균열이 번진다. 봉인 안에서 은빛 불꽃이 되살아난다.';
+    if(stage==='last-warning')return '강탈식이 완성된다. 의목사는 마지막 힘으로 봉인을 밀어낸다.';
+    if(stage==='emptiness')return 'EGO를 빼앗겼다. 허탈함을 삼키며 봉인을 안쪽에서 깨뜨린다.';
+    if(stage==='awakening')return '봉인이 깨졌다. 분노가 백은의 불꽃으로 바뀌며 환수전이 시작된다.';
+    if(stage==='pursuit')return 'EGO의 맥동이 왕좌로 길을 연다. 의목사가 은빛 잔광을 따라 접근한다.';
+    if(stage==='duel')return '검끝이 맞닿았다. 의목사는 피를 되찾으며 1대1 근접 결전을 이어간다.';
+    if(stage==='anger')return '악몽 군주에게 밀착한다. 피를 되찾으며 한 검씩 EGO에 다가간다.';
+    if(stage==='resolve')return '장막이 갈라졌다. 의목사는 흔들리지 않고 근접 결전을 이어간다.';
+    if(stage==='reclaim')return 'EGO의 맥동이 보인다. 마지막 은검으로 악몽 군주를 끊는다.';
+    if(story.reclaimed||v35Route().egoRecovered)return 'EGO 환수 완료. 의목사가 성역을 회복하고 악몽을 끝냈다.';
+    return v40DialoguePrev();
+  };
+  const v40EmotionPrev=v38Emotion;
+  v38Emotion=function(){
+    const stage=v37Story().v40Stage;
+    if(['temptation','sealed','ego-crack','last-warning'].includes(stage))return 'sealed';
+    if(stage==='emptiness')return 'emptiness';
+    if(stage==='awakening')return 'awakening';
+    if(stage==='pursuit')return 'resolve';
+    if(['duel','anger','resolve'].includes(stage))return 'anger';
+    if(stage==='reclaim')return 'reclaim';
+    return v40EmotionPrev();
+  };
+
+  // Final settings scroll guard: preserve each tab even when combat state rebuilds command markup.
+  function v40SettingsTab(){return ['ops','auto','commands'].includes(MOBILE_V32.panelTab)?MOBILE_V32.panelTab:'ops';}
+  function v40ClampSettingsTop(value){return clamp(Number(value)||0,0,Math.max(0,systemPanel.scrollHeight-systemPanel.clientHeight));}
+  function v40RestoreSettingsTop(tab,value,mutation=false){
+    if(systemPanel.classList.contains('hidden')||v40SettingsTab()!==tab)return false;
+    const next=v40ClampSettingsTop(value);if(Math.abs(systemPanel.scrollTop-next)<=1)return false;
+    MOBILE_V40.ui.restoring=true;systemPanel.scrollTop=next;MOBILE_V40.ui.restoring=false;
+    MOBILE_V40.ui.scrollByTab[tab]=systemPanel.scrollTop;
+    if(mutation)MOBILE_V40.stats.settingsMutationRestores++;else MOBILE_V40.stats.settingsScrollRestores++;
+    return true;
+  }
+  for(const type of ['wheel','touchmove','pointerdown'])systemPanel.addEventListener(type,()=>{MOBILE_V40.ui.userUntil=performance.now()+1500;},{capture:true,passive:true});
+  systemPanel.addEventListener('scroll',event=>{
+    if(MOBILE_V40.ui.restoring||systemPanel.classList.contains('hidden'))return;
+    if(event.isTrusted||performance.now()<MOBILE_V40.ui.userUntil)MOBILE_V40.ui.scrollByTab[v40SettingsTab()]=systemPanel.scrollTop;
+  },{capture:true,passive:true});
+  systemPanel.addEventListener('click',event=>{
+    const button=event.target.closest?.('[data-v32-tab]');if(!button)return;
+    const old=v40SettingsTab();MOBILE_V40.ui.scrollByTab[old]=systemPanel.scrollTop;
+    const next=button.getAttribute('data-v32-tab');if(!['ops','auto','commands'].includes(next))return;
+    const wanted=MOBILE_V40.ui.scrollByTab[next]||0;const token=++MOBILE_V40.ui.token;
+    window.setTimeout(()=>{if(token===MOBILE_V40.ui.token)v40RestoreSettingsTop(next,wanted);},70);
+  },true);
+  const v40RenderSystemPanelPrev=renderSystemPanel;
+  renderSystemPanel=function(force=false){
+    if(systemPanel.classList.contains('hidden'))return v40RenderSystemPanelPrev(force);
+    const beforeTab=v40SettingsTab(),before=systemPanel.scrollTop;
+    if(!MOBILE_V40.ui.restoring&&before>0)MOBILE_V40.ui.scrollByTab[beforeTab]=before;
+    MOBILE_V40.ui.restoring=true;let result;
+    try{result=v40RenderSystemPanelPrev(force);}finally{MOBILE_V40.ui.restoring=false;}
+    if(typeof MOBILE_V35==='object'&&MOBILE_V35.ui)MOBILE_V35.ui.token++;
+    if(typeof MOBILE_V36==='object'&&MOBILE_V36.settings)MOBILE_V36.settings.restoreToken++;
+    const afterTab=v40SettingsTab();const desired=afterTab===beforeTab?Math.max(before,MOBILE_V40.ui.scrollByTab[afterTab]||0):(MOBILE_V40.ui.scrollByTab[afterTab]||0);
+    MOBILE_V40.ui.scrollByTab[afterTab]=desired;const token=++MOBILE_V40.ui.token;
+    const restore=()=>{if(token===MOBILE_V40.ui.token)v40RestoreSettingsTop(afterTab,desired);};
+    restore();queueMicrotask(()=>requestAnimationFrame(()=>requestAnimationFrame(restore)));window.setTimeout(restore,90);window.setTimeout(restore,260);window.setTimeout(restore,480);window.setTimeout(restore,820);
+    return result;
+  };
+  if(typeof MutationObserver==='function'){
+    MOBILE_V40.ui.observer=new MutationObserver(()=>{
+      if(systemPanel.classList.contains('hidden')||MOBILE_V40.ui.restoring)return;
+      const tab=v40SettingsTab(),wanted=MOBILE_V40.ui.scrollByTab[tab]||0;
+      if(wanted>24&&Math.abs(systemPanel.scrollTop-wanted)>24&&performance.now()>=MOBILE_V40.ui.userUntil)queueMicrotask(()=>v40RestoreSettingsTop(tab,wanted,true));
+    });
+    MOBILE_V40.ui.observer.observe(systemPanelBody,{childList:true,subtree:true});
+  }
+
+  function v40UpdateFx(dt){for(const fx of MOBILE_V40.fx)fx.life-=dt;MOBILE_V40.fx=MOBILE_V40.fx.filter(fx=>fx.life>0);}
+  function v40DrawFx(){
+    if(!MOBILE_V40.fx.length)return;
+    for(const fx of MOBILE_V40.fx){
+      const a=clamp(fx.life/Math.max(.001,fx.maxLife),0,1),p=worldToScreen(fx.x,fx.y),q=worldToScreen(fx.tx,fx.ty),t=1-a;
+      if(!isScreenVisible(p,220)&&!isScreenVisible(q,220))continue;
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=Math.min(.9,a*.92);ctx.lineCap='round';ctx.lineJoin='round';
+      if(fx.kind==='tempest'){
+        ctx.translate(p.x,p.y-26);ctx.rotate(fx.seed+t*3.4);ctx.strokeStyle='#eaf8ff';ctx.shadowColor='#9ed8ff';ctx.shadowBlur=12;ctx.lineWidth=1.6;
+        for(let i=0;i<6;i++){ctx.rotate(Math.PI/3);ctx.beginPath();ctx.arc(0,0,18+fx.size*5,-.5,.55);ctx.stroke();}
+        ctx.strokeStyle='#ffffff';ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(-24,-16);ctx.lineTo(25,17);ctx.moveTo(-21,19);ctx.lineTo(23,-18);ctx.stroke();
+      }else if(fx.kind==='reclaim'){
+        const dx=q.x-p.x,dy=q.y-p.y;ctx.strokeStyle='#ffffff';ctx.shadowColor='#c4e8ff';ctx.shadowBlur=16;ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(p.x,p.y-22);for(let i=1;i<=14;i++){const u=i/14,off=Math.sin(u*Math.PI*5+fx.seed)*7*a;ctx.lineTo(p.x+dx*u-dy*.018*off,p.y-22+dy*u+dx*.018*off);}ctx.stroke();ctx.strokeStyle='#ff8bdc';ctx.globalAlpha=a*.48;ctx.beginPath();ctx.arc(q.x,q.y-20,(1-t)*34+8,0,Math.PI*2);ctx.stroke();
+      }else if(fx.kind==='flame'){
+        ctx.translate(p.x,p.y);ctx.strokeStyle='#f7fdff';ctx.shadowColor='#9ed8ff';ctx.shadowBlur=14;
+        for(let i=0;i<5;i++){const ang=fx.seed+i*Math.PI*.4,rad=8+i*3;ctx.globalAlpha=a*(.42+i*.08);ctx.lineWidth=1.2+(i%2)*.7;ctx.beginPath();ctx.moveTo(Math.cos(ang)*rad,4);ctx.quadraticCurveTo(Math.cos(ang+t*4)*rad*1.6,-18-fx.size*5,Math.sin(ang)*rad*.45,-42-fx.size*7);ctx.stroke();}
+      }else if(fx.kind==='crescent'){
+        const ang=Math.atan2(q.y-p.y,q.x-p.x);ctx.translate(q.x,q.y-20);ctx.rotate(ang);ctx.strokeStyle='#ffffff';ctx.shadowColor='#bfe8ff';ctx.shadowBlur=12;ctx.lineWidth=2.2;ctx.beginPath();ctx.arc(0,0,12+fx.size*7,-1.25,1.25);ctx.stroke();ctx.globalAlpha=a*.42;ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,7+fx.size*5,-1.05,1.05);ctx.stroke();
+      }else if(fx.kind==='pursuit'){
+        const dx=q.x-p.x,dy=q.y-p.y;ctx.strokeStyle='#eaf8ff';ctx.shadowColor='#8fcfff';ctx.shadowBlur=14;
+        for(let i=0;i<3;i++){ctx.globalAlpha=a*(.68-i*.16);ctx.lineWidth=2.1-i*.35;ctx.beginPath();ctx.moveTo(p.x-dy*.018*i*8,p.y-18+dx*.018*i*8);ctx.quadraticCurveTo((p.x+q.x)/2+Math.sin(fx.seed+i)*8,(p.y+q.y)/2-24,q.x-dy*.018*i*5,q.y-20+dx*.018*i*5);ctx.stroke();}
+      }else if(fx.kind==='pressure'){
+        ctx.translate(p.x,p.y-16);ctx.rotate(fx.seed+t*1.4);ctx.strokeStyle='#f3fbff';ctx.shadowColor='#a6dcff';ctx.shadowBlur=10;ctx.lineWidth=1.5;for(let i=0;i<8;i++){ctx.rotate(Math.PI/4);ctx.beginPath();ctx.moveTo(5,0);ctx.lineTo(11+fx.size*8*t,0);ctx.stroke();}
+      }else if(fx.kind==='awakening'){
+        ctx.translate(p.x,p.y);ctx.strokeStyle='#ffffff';ctx.shadowColor='#a6dcff';ctx.shadowBlur=18;for(let i=0;i<7;i++){const x=Math.cos(fx.seed+i*2.1)*22,y=8-Math.sin(fx.seed+i)*5;ctx.globalAlpha=a*(.35+(i%3)*.16);ctx.lineWidth=1.5+(i%2);ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+Math.sin(t*8+i)*12,-25-fx.size*4,x*.45,-64-fx.size*5);ctx.stroke();}
+      }else if(fx.kind==='seal'){
+        ctx.translate(p.x,p.y-32);ctx.rotate(fx.seed-t*1.8);ctx.strokeStyle='#ff78c4';ctx.shadowColor='#ff2c93';ctx.shadowBlur=14;ctx.lineWidth=2;for(let r=0;r<3;r++){ctx.beginPath();ctx.arc(0,0,15+r*11+t*5,0,Math.PI*2);ctx.stroke();}
+      }else if(fx.kind==='lifesteal'){
+        ctx.strokeStyle='#dff7ff';ctx.shadowColor='#ffffff';ctx.shadowBlur=10;ctx.lineWidth=1.4;for(let i=0;i<4;i++){const u=clamp(t+i*.13,0,1);ctx.globalAlpha=a*(1-i*.15);ctx.beginPath();ctx.arc(q.x+(p.x-q.x)*u,q.y-18+(p.y-q.y)*u,3+i*.5,0,Math.PI*2);ctx.stroke();}
+      }else{
+        ctx.strokeStyle='#eaf8ff';ctx.shadowColor='#9ed8ff';ctx.shadowBlur=10;ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(p.x,p.y-18,8+fx.size*7*t,0,Math.PI*2);ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  const v40UpdatePrev=update;
+  update=function(dt){const result=v40UpdatePrev(dt);try{v40UpdateTimeline(dt);v40UpdateFx(dt);}catch(error){v40Error('update',error);}return result;};
+  const v40RenderPrev=render;
+  render=function(){const result=v40RenderPrev();try{v40DrawFx();}catch(error){v40Error('render',error);}return result;};
+  const v40BossDefeatedPrev=handleNightmareBossDefeated;
+  handleNightmareBossDefeated=function(enemy){
+    const final=!!(enemy&&ENEMY_REGISTRY[enemy.type]?.finalBoss),started=MOBILE_V40.duel.startedAt;
+    const result=v40BossDefeatedPrev(enemy);
+    if(final&&game.difficulty==='hard'&&started>=0){
+      if(MOBILE_V40.duel.endedAt<0){MOBILE_V40.duel.endedAt=game.defenseTime;MOBILE_V40.duel.duration=Math.max(0,game.defenseTime-started);MOBILE_V40.duel.minimumHeld=MOBILE_V40.duel.duration>=MOBILE_V40.balance.duelMinimumSeconds-.15;}
+      const story=v37Story();story.v40Stage='recovery';
+      if(!MOBILE_V40.timeline.recoveryShown){MOBILE_V40.timeline.recoveryShown=true;v40StoryEvent('v40-recovery','악몽 군주가 쓰러졌다. EGO가 의목사에게 돌아오고 성역의 맥박이 회복된다.',5,7600);}
+    }
+    return result;
+  };
+  const v40ResetPrev=resetGame;
+  resetGame=function(){
+    const result=v40ResetPrev();
+    Object.assign(MOBILE_V40.duel,{bossId:null,spawnAt:-1,startedAt:-1,endedAt:-1,duration:0,minimumHeld:false,oneVsOne:false,damageToBoss:0,heroHealing:0,awakenedAt:-1,arenaCleared:false});
+    Object.assign(MOBILE_V40.timeline,{sealStage:0,releaseAt:-1,pursuitShown:false,pursuitShifted:false,angerShown:false,halfShown:false,quarterShown:false,recoveryShown:false});MOBILE_V40.fx.length=0;MOBILE_V40.ui.scrollByTab={ops:0,auto:0,commands:0};MOBILE_V40.ui.token++;
+    DIFFICULTY_REGISTRY.hard.enemyHp=MOBILE_V40.balance.hardEnemyHp;try{recomputeUnitRegistry77();}catch(error){v40Error('reset-recompute',error);}return result;
+  };
+
+  function v40AuditBalance(){
+    const hero=UNIT_REGISTRY.hwandoHero||{},boss=v40FinalBoss(),route=v35Route();
+    const heroRangeOk=!route.active||(Number(hero.range)||0)<=MOBILE_V40.balance.heroAwakenedRange+.001;
+    const heroSplashOk=!route.active||(Number(hero.splash)||0)<=MOBILE_V40.balance.heroSplashMax+.001;
+    return{passed:DIFFICULTY_REGISTRY.hard.enemyHp===MOBILE_V40.balance.hardEnemyHp&&heroRangeOk&&heroSplashOk,hardEnemyHp:DIFFICULTY_REGISTRY.hard.enemyHp,hardEnemyDamage:DIFFICULTY_REGISTRY.hard.enemyDamage,hero:{hp:hero.hp,damage:Number((hero.damage||0).toFixed(2)),fireRate:hero.fireRate,range:hero.range,splash:hero.splash,tier:route.tier,lastStand:route.hardLastStand},boss:boss?{hp:Math.round(boss.hp),maxHp:Math.round(boss.maxHp),damage:Number((boss.damage||0).toFixed(2)),ratio:Number((boss.hp/Math.max(1,boss.maxHp)).toFixed(4))}:null,duel:{...MOBILE_V40.duel}};
+  }
+  function v40AuditStory(){
+    const story=v37Story(),codes=(story.events||[]).map(e=>e.code),required=['seal','seal-warning','ego-crack','theft-warning','ego-theft','theft-awaken','throne-path','duel-start','reclaim-vow','reclaim-window','ego-reclaimed'];let cursor=-1;const missing=[];
+    for(const code of required){const at=codes.indexOf(code,cursor+1);if(at<0)missing.push(code);else cursor=at;}
+    return{passed:game.difficulty!=='hard'||!v35Route().active||game.result!=='승리'||(missing.length===0&&MOBILE_V40.duel.minimumHeld),required,codes,missing,phase:story.phase,stage:story.v40Stage,duel:{...MOBILE_V40.duel}};
+  }
+  async function v40RunScenario(difficulty='hard',routeEnabled=true,fastMode=false,maxGameSeconds=11000,step=.14){
+    const result=await v39RunScenario(difficulty,routeEnabled,fastMode,maxGameSeconds,step);const balance=v40AuditBalance(),story=v40AuditStory();
+    const expected=!(difficulty==='hard'&&!routeEnabled),out={...result,version:MOBILE_V40.version,v40:{balance,story,duel:{...MOBILE_V40.duel},stats:{...MOBILE_V40.stats},errors:MOBILE_V40.errors.slice(-12)}};
+    out.passed=!!result.passed&&balance.passed&&story.passed&&MOBILE_V40.errors.length===0&&(difficulty!=='hard'||!routeEnabled||!expected||MOBILE_V40.duel.minimumHeld);
+    return out;
+  }
+  window.__CYBER_SANCTUM_V40__={version:MOBILE_V40.version,state:()=>({build:v40Meta?.content||'',difficulty:game.difficulty,wave:game.wave,result:game.result,balance:v40AuditBalance(),story:v40AuditStory(),stats:{...MOBILE_V40.stats},errors:MOBILE_V40.errors.slice(-12)}),auditBalance:v40AuditBalance,auditStory:v40AuditStory,runScenario:v40RunScenario,duel:()=>({...MOBILE_V40.duel}),forceNarrative:(stage)=>{v37Story().v40Stage=stage;v38RenderNarrative(true);return v38NarrativeText();}};
+  if(window.__CYBER_SANCTUM_V39__)window.__CYBER_SANCTUM_V39__.version=MOBILE_V40.version;
+  if(window.__CYBER_SANCTUM_V38__)window.__CYBER_SANCTUM_V38__.version=MOBILE_V40.version;
+  if(window.__CYBER_SANCTUM_V37__)window.__CYBER_SANCTUM_V37__.version=MOBILE_V40.version;
+  // HARD_FINAL_DUEL_STORY_BALANCE_V40_END
 
 
   requestAnimationFrame(loop);
