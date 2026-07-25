@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <meta name="build-version" content="mobile-hard-final-duel-story-v40" />
-  <title>사이버 성역 방어 2.5D · 의목사 봉인·EGO 탈환 최종결전 v40</title>
+  <meta name="build-version" content="mobile-hard-final-highlight-v41" />
+  <title>사이버 성역 방어 2.5D · 의목사 봉인·EGO 탈환 최종 하이라이트 v41</title>
   <style>
     :root {
       --panel: rgba(5, 10, 18, 0.86);
@@ -26094,6 +26094,431 @@
   if(window.__CYBER_SANCTUM_V38__)window.__CYBER_SANCTUM_V38__.version=MOBILE_V40.version;
   if(window.__CYBER_SANCTUM_V37__)window.__CYBER_SANCTUM_V37__.version=MOBILE_V40.version;
   // HARD_FINAL_DUEL_STORY_BALANCE_V40_END
+
+
+
+  // HARD_FINAL_HIGHLIGHT_SEQUENCE_V41_START
+  const MOBILE_V41 = {
+    version:'mobile-hard-final-highlight-v41',
+    timing:{
+      sealDisplaySeconds:6,
+      siegeMinStandard:58,
+      siegeMaxStandard:72,
+      siegeMinFast:48,
+      siegeMaxFast:60,
+      baseLostDisplaySeconds:7,
+      egoCallDisplaySeconds:7,
+      duelMinStandard:75,
+      duelMinFast:62,
+      siegePulseSeconds:2.6,
+      reinforcementSeconds:9.5,
+    },
+    sequence:{
+      active:false,
+      phase:'idle',
+      phaseStartedAt:-1,
+      startedAt:-1,
+      finalWaveStartedAt:-1,
+      collapseAt:-1,
+      egoCallAt:-1,
+      awakenedAt:-1,
+      completedAt:-1,
+      waveStarted:false,
+      baseLost:false,
+      egoCalled:false,
+      released:false,
+      bypassStart:false,
+      lastPulseAt:-Infinity,
+      lastReinforcementAt:-Infinity,
+      siegePulseCount:0,
+      reinforcementCount:0,
+      initialStructures:0,
+      initialBaseHp:0,
+      text:'',
+      emotion:'focus',
+      textUntil:-Infinity,
+      progressLabel:'',
+      progressDuration:0,
+      siegeLine:0,
+      finalCarrierAssigned:false,
+    },
+    fx:{awakeningUntil:-Infinity,lastSealPulseAt:-Infinity,lastBasePulseAt:-Infinity},
+    ui:{style:null,bar:null,label:null,lastKey:''},
+    errors:[],
+    stats:{sequenceStarts:0,finalWaveStarts:0,siegePulses:0,reinforcements:0,structuresCollapsed:0,baseCollapseEvents:0,egoCalls:0,heroReleases:0,finalCarriers:0,narrativeUpdates:0,renderFrames:0,enemyTrims:0},
+  };
+  const v41Meta=document.querySelector('meta[name="build-version"]');
+  if(v41Meta)v41Meta.content=MOBILE_V41.version;
+  for(const obj of [typeof MOBILE_V40==='object'?MOBILE_V40:null,typeof MOBILE_V39==='object'?MOBILE_V39:null,typeof MOBILE_V38==='object'?MOBILE_V38:null,typeof MOBILE_V37==='object'?MOBILE_V37:null,typeof MOBILE_V36==='object'?MOBILE_V36:null,typeof MOBILE_V35==='object'?MOBILE_V35:null])if(obj)obj.version=MOBILE_V41.version;
+
+  function v41Error(scope,error){
+    const item={scope:String(scope),message:String(error?.message||error||'unknown'),at:Date.now()};
+    MOBILE_V41.errors.push(item);if(MOBILE_V41.errors.length>32)MOBILE_V41.errors.splice(0,MOBILE_V41.errors.length-32);
+    try{console.error('[v41]',item.scope,item.message);}catch(_){}
+    return item;
+  }
+  function v41Seq(){return MOBILE_V41.sequence;}
+  function v41Eligible(){
+    const state=v35Route(),hero=v35Hero();
+    return !!(MOBILE_UI_V22.introStarted&&!game.gameOver&&game.difficulty==='hard'&&state.active&&hero&&hero.hp>0&&!state.egoRecovered);
+  }
+  function v41PhaseElapsed(){const seq=v41Seq();return seq.phaseStartedAt>=0?Math.max(0,game.defenseTime-seq.phaseStartedAt):0;}
+  function v41SiegeMin(){return game.fastMode?MOBILE_V41.timing.siegeMinFast:MOBILE_V41.timing.siegeMinStandard;}
+  function v41SiegeMax(){return game.fastMode?MOBILE_V41.timing.siegeMaxFast:MOBILE_V41.timing.siegeMaxStandard;}
+  function v41DuelMinimum(){return game.fastMode?MOBILE_V41.timing.duelMinFast:MOBILE_V41.timing.duelMinStandard;}
+  function v41SetPhase(phase,text='',emotion='focus',durationSeconds=0,code='',bannerTitle='',bannerSub=''){
+    const seq=v41Seq();seq.phase=phase;seq.phaseStartedAt=game.defenseTime;seq.text=String(text||'');seq.emotion=emotion;seq.textUntil=durationSeconds>0?game.defenseTime+durationSeconds:Infinity;seq.progressDuration=Math.max(0,durationSeconds);seq.progressLabel=bannerTitle||'';
+    if(code&&text)try{v40StoryEvent(code,text,9,Math.round(Math.max(.1,durationSeconds||6)*1000));}catch(error){v41Error('story-event',error);}
+    if(bannerTitle)try{showCounterBannerCF9(bannerTitle,bannerSub||text,Math.max(1,durationSeconds||4));}catch(error){v41Error('banner',error);}
+    try{v38RenderNarrative(true);}catch(error){v41Error('narrative-render',error);}
+    MOBILE_V41.stats.narrativeUpdates++;
+  }
+  function v41BeginSequence(){
+    const seq=v41Seq(),hero=v35Hero(),story=v37Story();
+    if(seq.active||!v41Eligible()||game.wave!==nowMaxWave()-1)return false;
+    seq.active=true;seq.startedAt=game.defenseTime;seq.initialStructures=(game.structures||[]).filter(s=>s&&s.hp>0).length;seq.initialBaseHp=game.base?.hp||0;seq.waveStarted=false;seq.baseLost=false;seq.egoCalled=false;seq.released=false;seq.siegeLine=0;
+    MOBILE_V41.stats.sequenceStarts++;
+    let sealed=false;
+    try{sealed=!!v37BeginSeal(null,'적의 함정');}catch(error){v41Error('begin-seal',error);}
+    if(!sealed&&hero){
+      story.phase='sealed';story.sealed=true;story.sealStartedAt=game.defenseTime;story.sealFixedX=hero.x;story.sealFixedY=hero.y;hero.v37Sealed=true;hero.attackTarget=null;hero.moveOrder=null;hero.orderType='sealed';hero.path=[];hero.pathIndex=0;hero.manualOverrideUntil=Infinity;
+    }
+    story.pendingTheftAt=Infinity;story.sealWarningShown=true;story.v40Stage='v41-preseal';
+    if(hero){v40PushFx('seal',hero.x,hero.y,hero.x,hero.y,4.6,2.0);addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,'#ff4fa8',5.2,1.5);addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,'#a91565',3.4,1.9);addEffect(hero.x,hero.y,'적의 함정 · 의목사 봉인','#ff86c8');}
+    game.nextWaveIn=MOBILE_V41.timing.sealDisplaySeconds;
+    v41SetPhase('preseal','의목사가 적의 함정에 당해 봉인되었다.','sealed',MOBILE_V41.timing.sealDisplaySeconds,'v41-preseal','의목사 봉인','적의 함정에 당해 의목사의 검로가 완전히 멈췄습니다.');
+    return true;
+  }
+
+  const v41StartWavePrev=startWave;
+  startWave=function(forceBoss=false){
+    const seq=v41Seq();
+    if(!forceBoss&&!seq.bypassStart&&v41Eligible()&&!v35Route().egoStolen&&game.wave===nowMaxWave()-1){
+      if(!seq.active)v41BeginSequence();
+      return false;
+    }
+    return v41StartWavePrev(forceBoss);
+  };
+
+  function v41StartFinalWave(){
+    const seq=v41Seq();if(seq.waveStarted||game.gameOver)return false;
+    const beforeWave=game.wave,beforeQueue=game.spawnQueue.length;
+    seq.bypassStart=true;let result;
+    try{result=v41StartWavePrev(false);}catch(error){v41Error('start-final-wave',error);}finally{seq.bypassStart=false;}
+    if(game.wave<=beforeWave)return false;
+    seq.waveStarted=true;seq.finalWaveStartedAt=game.defenseTime;seq.lastPulseAt=game.defenseTime;seq.lastReinforcementAt=game.defenseTime;MOBILE_V41.stats.finalWaveStarts++;
+    const prefix=game.spawnQueue.slice(0,beforeQueue),added=game.spawnQueue.slice(beforeQueue);
+    const cap=game.fastMode?50:64,perType={lesser:22,wraith:13,vampire:11,armored:10,breaker:8};
+    const counts=Object.create(null),bossItems=[],regular=[];
+    for(const item of added){
+      item.delay=Math.max(.12,(Number(item.delay)||0)*.48);item.v41FinalRush=true;
+      if(ENEMY_REGISTRY[item.type]?.boss){bossItems.push(item);continue;}
+      counts[item.type]=(counts[item.type]||0)+1;
+      if(regular.length<Math.max(1,cap-bossItems.length)&&(perType[item.type]==null||counts[item.type]<=perType[item.type]))regular.push(item);
+    }
+    const selected=regular.slice(0,Math.max(1,cap-bossItems.length)).concat(bossItems.slice(-2));
+    selected.sort((a,b)=>(Number(a.delay)||0)-(Number(b.delay)||0));
+    selected.forEach((item,index)=>{item.delay=Math.max(.12,Math.min(Number(item.delay)||0,index*.42+.2));});
+    game.spawnQueue=prefix.concat(selected);
+    const story=v37Story();story.pendingTheftAt=Infinity;story.v40Stage='v41-siege';
+    v41SetPhase('siege','마지막 웨이브가 성역으로 밀려든다. 봉인된 의목사는 움직일 수 없다.','sealed',0,'v41-final-wave','마지막 웨이브','의목사가 봉인된 틈을 타 악몽의 군세가 양측 통로로 쇄도합니다.');
+    return result;
+  }
+
+  const v41SpawnEnemyPrev=spawnEnemy;
+  spawnEnemy=function(type,waveIndex,bossLevel=0){
+    const enemy=v41SpawnEnemyPrev(type,waveIndex,bossLevel);
+    const seq=v41Seq();
+    if(enemy&&seq.active&&seq.phase==='siege'&&Number(waveIndex)===nowMaxWave()&&!ENEMY_REGISTRY[type]?.finalBoss){
+      if(!enemy.v41RushScaled){enemy.v41RushScaled=true;enemy.maxHp=Math.round(enemy.maxHp*1.10);enemy.hp=enemy.maxHp;enemy.damage*=1.035;}
+      enemy.v41FinalRush=true;
+    }
+    return enemy;
+  };
+
+  function v41TrimSiegeEnemies(){
+    const seq=v41Seq();if(!seq.active||!['siege','base-lost','ego-call','awakened','hunt'].includes(seq.phase))return 0;
+    const cap=game.fastMode?60:72,live=(game.enemies||[]).filter(e=>e&&e.hp>0&&!e.enemyBuilding);if(live.length<=cap)return 0;
+    const protectedEnemy=e=>{const data=ENEMY_REGISTRY[e.type]||{};return !!(data.boss||data.finalBoss||e.nightmareBoss||e.midbossWaveAssault||e.v35EgoCarrier||e.v37EgoCarrier);};
+    const removable=live.filter(e=>!protectedEnemy(e));const base=game.base?structureCenter(game.base):{x:CONFIG.mapW/2,y:CONFIG.mapH/2};
+    removable.sort((a,b)=>dist2(b.x,b.y,base.x,base.y)-dist2(a.x,a.y,base.x,base.y));
+    let need=live.length-cap,removed=0;const ids=new Set();for(const enemy of removable){if(need<=0)break;ids.add(enemy.id);enemy.hp=0;need--;removed++;}
+    if(removed){game.enemies=game.enemies.filter(e=>!ids.has(e.id));MOBILE_V41.stats.enemyTrims+=removed;}
+    return removed;
+  }
+
+  function v41QueueReinforcement(){
+    const seq=v41Seq(),now=game.defenseTime;if(seq.phase!=='siege'||now-seq.lastReinforcementAt<MOBILE_V41.timing.reinforcementSeconds)return 0;
+    seq.lastReinforcementAt=now;
+    const live=(game.enemies||[]).filter(e=>e&&e.hp>0&&!e.enemyBuilding).length,total=live+game.spawnQueue.length;
+    if(total>=26)return 0;
+    const wave=nowMaxWave(),cycle=[['lesser','wraith','lesser','vampire'],['armored','lesser','breaker','wraith'],['vampire','wraith','armored','lesser']][seq.reinforcementCount%3];
+    const count=Math.min(game.fastMode?4:5,Math.max(2,28-total));
+    for(let i=0;i<count;i++)game.spawnQueue.push({type:cycle[i%cycle.length],delay:.18+i*.58,wave,bossLevel:Math.max(1,Math.floor(wave/(game.fastMode?3:5))),v41FinalRush:true});
+    seq.reinforcementCount++;MOBILE_V41.stats.reinforcements+=count;
+    try{addLog(`악몽 증원 ${count}기: 봉인된 성역의 측면으로 침투합니다.`);}catch(_){}
+    return count;
+  }
+
+  const v41StructureDamagePrev=structureDamage;
+  structureDamage=function(structure,amount){
+    const seq=v41Seq();
+    if(seq.active&&!seq.released&&structure===game.base&&['preseal','siege','base-lost','ego-call'].includes(seq.phase)){
+      const safe=Math.max(0,Math.min(Math.max(0,Number(amount)||0),Math.max(0,structure.hp-1)));
+      if(safe<=0){structure.hp=Math.max(1,structure.hp);return 0;}
+      const result=v41StructureDamagePrev(structure,safe);if(structure.hp<1)structure.hp=1;return result;
+    }
+    return v41StructureDamagePrev(structure,amount);
+  };
+
+  function v41SiegePulse(){
+    const seq=v41Seq(),now=game.defenseTime;if(seq.phase!=='siege'||now-seq.lastPulseAt<MOBILE_V41.timing.siegePulseSeconds)return;
+    seq.lastPulseAt=now;seq.siegePulseCount++;MOBILE_V41.stats.siegePulses++;
+    const progress=clamp(v41PhaseElapsed()/Math.max(1,v41SiegeMax()),0,1),base=game.base;
+    const structures=(game.structures||[]).filter(s=>s&&s!==base&&s.hp>0&&!s.underConstruction);
+    if(structures.length){
+      structures.sort((a,b)=>(a.hp/Math.max(1,a.maxHp))-(b.hp/Math.max(1,b.maxHp))||dist2(a.x,a.y,base?.x||0,base?.y||0)-dist2(b.x,b.y,base?.x||0,base?.y||0));
+      const target=structures[0],damage=target.maxHp*(.075+progress*.075);
+      const before=target.hp;try{structureDamage(target,damage);}catch(error){v41Error('siege-structure',error);}
+      if(before>0&&target.hp<=0){MOBILE_V41.stats.structuresCollapsed++;addEffect(target.x,target.y,'방어선 붕괴','#ff627d');}
+      else if(seq.siegePulseCount%2===0)addEffect(target.x,target.y,'악몽 침식','#ff627d');
+      addCombatFx('ring',target.x,target.y,target.x,target.y,'#ff345c',2.2+progress*1.2,.65);
+    }
+    if(base&&base.hp>1){
+      const damage=base.maxHp*(.0065+progress*.019);
+      try{structureDamage(base,damage);}catch(error){v41Error('siege-base',error);}
+      if(seq.siegePulseCount%3===0){addCombatFx('ring',base.x,base.y,base.x,base.y,'#ff284f',3.2+progress*1.8,.72);addEffect(base.x,base.y,progress>.7?'EGO 회선 침식':'본부 피격','#ff7089');}
+    }
+  }
+
+  function v41SiegeNarrative(){
+    const seq=v41Seq(),elapsed=v41PhaseElapsed();
+    if(elapsed>=12&&seq.siegeLine<1){seq.siegeLine=1;v40StoryEvent('seal-warning','봉인된 의목사 앞에서 포탑선이 하나씩 꺼진다. 본부가 마지막 출력을 끌어낸다.',6,6000);}
+    if(elapsed>=30&&seq.siegeLine<2){seq.siegeLine=2;v40StoryEvent('ego-crack','양측 방어선이 갈라졌다. 악몽의 군세가 EGO 회선까지 파고든다.',6,6200);}
+    if(elapsed>=48&&seq.siegeLine<3){seq.siegeLine=3;v40StoryEvent('theft-warning','본부 외벽이 무너진다. 봉인 안의 의목사는 아무것도 지키지 못한 채 분노를 삼킨다.',7,6500);}
+  }
+
+  function v41CollapseBase(){
+    const seq=v41Seq();if(seq.baseLost||!v41Eligible())return false;
+    seq.baseLost=true;seq.collapseAt=game.defenseTime;MOBILE_V41.stats.baseCollapseEvents++;
+    let theft=false;try{theft=!!v37CompleteHardTheft(null);}catch(error){v41Error('complete-theft',error);}
+    const story=v37Story();story.pendingTheftAt=Infinity;story.v40Stage='v41-base-lost';MOBILE_V40.timeline.releaseAt=Infinity;
+    const base=game.base;if(base){base.hp=1;base.v35Ruined=true;base.v35EgoLost=true;base.v37StoryRuin=true;addCombatFx('ring',base.x,base.y,base.x,base.y,'#ff1744',7.2,1.7);addEffect(base.x,base.y,'EGO 잠식','#ff5b83');}
+    const hero=v35Hero();if(hero){hero.v37Sealed=true;hero.hp=hero.maxHp;v40PushFx('seal',hero.x,hero.y,hero.x,hero.y,5.6,1.8);}
+    v41SetPhase('base-lost','본부가 털리고 EGO가 잠식당했다.','emptiness',MOBILE_V41.timing.baseLostDisplaySeconds,'v41-base-lost','본부 붕괴 · EGO 잠식','성역 방어선이 무너지고 EGO가 악몽에 잠식됐습니다.');
+    return theft;
+  }
+
+  function v41BeginEgoCall(){
+    const seq=v41Seq();if(seq.egoCalled)return false;seq.egoCalled=true;seq.egoCallAt=game.defenseTime;MOBILE_V41.stats.egoCalls++;
+    const story=v37Story();story.v40Stage='v41-ego-call';
+    const hero=v35Hero(),base=game.base;if(hero&&base)v40PushFx('reclaim',base.x,base.y,hero.x,hero.y,4.8,1.4);
+    v41SetPhase('ego-call','EGO: 유일한 희망은 당신뿐입니다.','reclaim',MOBILE_V41.timing.egoCallDisplaySeconds,'v41-ego-call','EGO의 목소리','유일한 희망은 당신뿐입니다. 의목사, 다시 일어나 주십시오.');
+    return true;
+  }
+
+  function v41ReleaseAwakenedHero(){
+    const seq=v41Seq();if(seq.released)return false;
+    MOBILE_V40.timeline.releaseAt=-1;
+    let released=false;try{released=!!v40ReleaseHero();}catch(error){v41Error('release-hero',error);}
+    if(!released){
+      const story=v37Story(),state=v35Route(),hero=v35Hero();story.sealed=false;story.awakened=true;story.phase='awakened';story.awakenedAt=game.defenseTime;state.hardLastStand=true;state.tier=Math.max(state.tier,10);
+      if(hero){hero.v37Sealed=false;hero.v37Awakened=true;hero.manualOverrideUntil=0;hero.hp=hero.maxHp;hero.attackTarget=v35NearestEnemy(hero.x,hero.y,Infinity);hero.orderType=hero.attackTarget?'attack':'idle';}
+      try{recomputeUnitRegistry77();}catch(error){v41Error('release-fallback',error);}released=true;
+    }
+    seq.released=true;seq.awakenedAt=game.defenseTime;MOBILE_V41.fx.awakeningUntil=game.defenseTime+8;MOBILE_V41.stats.heroReleases++;
+    const story=v37Story();story.v40Stage='v41-awakened';
+    const hero=v35Hero();if(hero){for(let i=0;i<3;i++)window.setTimeout(()=>{if(!game.gameOver){v40PushFx('awakening',hero.x,hero.y,hero.x,hero.y,6.4+i*.9,1.8);addCombatFx('ring',hero.x,hero.y,hero.x,hero.y,i===0?'#ffffff':'#9ed8ff',6.2+i*1.1,1.3);}},i*420);}
+    v41SetPhase('awakened','봉인이 풀렸다. 의목사가 백은으로 각성해 남은 모든 악몽을 베기 시작한다.','awakening',7,'v41-awakened','백은 각성','의목사가 봉인을 깨고 남은 모든 적과 악몽 군주를 향해 진격합니다.');
+    return released;
+  }
+
+  const v41SpawnNightmareBossPrev=spawnNightmareBoss;
+  spawnNightmareBoss=function(zone){
+    const boss=v41SpawnNightmareBossPrev(zone),state=v35Route(),seq=v41Seq();
+    if(boss&&ENEMY_REGISTRY[boss.type]?.finalBoss&&game.difficulty==='hard'&&state.active&&state.egoStolen&&!state.egoRecovered){
+      boss.v35EgoCarrier=true;boss.v37EgoCarrier=true;state.egoCarrierId=boss.id;seq.finalCarrierAssigned=true;MOBILE_V41.stats.finalCarriers++;
+      if(!boss.v41CarrierScaled){boss.v41CarrierScaled=true;boss.maxHp=Math.round(boss.maxHp*1.10);boss.hp=boss.maxHp;}
+      v40StoryEvent('v41-ego-carrier','잠식된 EGO가 악몽 군주에게 모인다. 의목사는 마지막 환수전에 들어간다.',7,6500);
+    }
+    return boss;
+  };
+
+  const v41TimelinePrev=v40UpdateTimeline;
+  v40UpdateTimeline=function(dt){
+    const seq=v41Seq();
+    if(!seq.active||seq.released){return v41TimelinePrev(dt);}
+    try{
+      if(seq.phase==='preseal'){
+        game.nextWaveIn=Math.max(0,MOBILE_V41.timing.sealDisplaySeconds-v41PhaseElapsed());
+        if(v41PhaseElapsed()>=MOBILE_V41.timing.sealDisplaySeconds)v41StartFinalWave();
+      }else if(seq.phase==='siege'){
+        v41QueueReinforcement();v41TrimSiegeEnemies();v41SiegePulse();v41SiegeNarrative();
+        const elapsed=v41PhaseElapsed(),baseRatio=game.base?game.base.hp/Math.max(1,game.base.maxHp):0,structures=(game.structures||[]).filter(s=>s&&s.hp>0&&!s.underConstruction).length;
+        if(elapsed>=v41SiegeMin()&&(baseRatio<=.15||structures<=3||elapsed>=v41SiegeMax()))v41CollapseBase();
+      }else if(seq.phase==='base-lost'){
+        if(v41PhaseElapsed()>=MOBILE_V41.timing.baseLostDisplaySeconds)v41BeginEgoCall();
+      }else if(seq.phase==='ego-call'){
+        if(v41PhaseElapsed()>=MOBILE_V41.timing.egoCallDisplaySeconds)v41ReleaseAwakenedHero();
+      }
+    }catch(error){v41Error('timeline',error);}
+  };
+
+  // Preserve the exact highlighted lines for their requested durations, then return to the existing narrative system.
+  const v41NarrativePrev=v38NarrativeText;
+  v38NarrativeText=function(){
+    const seq=v41Seq(),elapsed=v41PhaseElapsed();
+    if(seq.active){
+      if(seq.phase==='preseal')return '의목사가 적의 함정에 당해 봉인되었다.';
+      if(seq.phase==='siege'){
+        if(elapsed<18)return '마지막 웨이브가 밀려든다. 봉인된 의목사는 성역이 무너지는 광경을 지켜볼 수밖에 없다.';
+        if(elapsed<38)return '포탑선과 외벽이 하나씩 꺼진다. 악몽의 군세가 본부 EGO 회선으로 파고든다.';
+        return '본부의 마지막 방벽이 무너진다. 봉인 안의 의목사는 허탈함을 분노로 바꾼다.';
+      }
+      if(seq.phase==='base-lost')return '본부가 털리고 EGO가 잠식당했다.';
+      if(seq.phase==='ego-call')return 'EGO: 유일한 희망은 당신뿐입니다.';
+      if(seq.phase==='awakened'&&game.defenseTime-seq.awakenedAt<9)return '봉인이 풀렸다. 백은으로 각성한 의목사가 남은 모든 적을 향해 검을 든다.';
+    }
+    return v41NarrativePrev();
+  };
+  const v41EmotionPrev=v38Emotion;
+  v38Emotion=function(){
+    const phase=v41Seq().phase;
+    if(phase==='preseal'||phase==='siege')return 'sealed';
+    if(phase==='base-lost')return 'emptiness';
+    if(phase==='ego-call')return 'reclaim';
+    if(phase==='awakened'&&game.defenseTime-v41Seq().awakenedAt<9)return 'awakening';
+    return v41EmotionPrev();
+  };
+
+  function v41EnsureNarrativeProgress(){
+    const host=document.getElementById('heroNarrativeV38');if(!host)return null;
+    let wrap=host.querySelector('.v41StoryProgress');
+    if(!wrap){wrap=document.createElement('div');wrap.className='v41StoryProgress';wrap.innerHTML='<span></span><i></i>';host.appendChild(wrap);}
+    MOBILE_V41.ui.bar=wrap.querySelector('i');MOBILE_V41.ui.label=wrap.querySelector('span');return wrap;
+  }
+  if(!MOBILE_V41.ui.style){
+    const style=document.createElement('style');style.id='mobileV41StoryStyle';style.textContent=`
+      #heroNarrativeV38 .v41StoryProgress{display:none;position:relative;height:14px;margin-top:4px;border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden;background:rgba(0,0,0,.34)}
+      #heroNarrativeV38 .v41StoryProgress span{position:absolute;inset:0;z-index:2;display:grid;place-items:center;font:800 8px/1 system-ui;color:#fff;text-shadow:0 1px 2px #000;white-space:nowrap}
+      #heroNarrativeV38 .v41StoryProgress i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff4fa8,#fff,#9ed8ff);box-shadow:0 0 10px rgba(255,255,255,.42);transition:width .12s linear}
+      #heroNarrativeV38[data-v41-phase="preseal"],#heroNarrativeV38[data-v41-phase="siege"]{border-color:rgba(255,74,143,.68)!important;background:linear-gradient(180deg,rgba(48,7,31,.95),rgba(16,4,14,.94))!important}
+      #heroNarrativeV38[data-v41-phase="base-lost"]{border-color:rgba(255,40,79,.78)!important;background:linear-gradient(180deg,rgba(58,5,18,.96),rgba(18,2,7,.95))!important}
+      #heroNarrativeV38[data-v41-phase="ego-call"]{border-color:rgba(207,239,255,.78)!important;background:linear-gradient(180deg,rgba(13,38,58,.96),rgba(4,14,24,.95))!important;box-shadow:0 0 18px rgba(158,216,255,.22)!important}
+      @media(max-width:390px){#heroNarrativeV38 .v41StoryProgress{height:13px}#heroNarrativeV38 .v41StoryProgress span{font-size:7px}}
+    `;document.head.appendChild(style);MOBILE_V41.ui.style=style;
+  }
+  const v41NarrativeRenderPrev=v38RenderNarrative;
+  v38RenderNarrative=function(force=false){
+    const result=v41NarrativeRenderPrev(force),seq=v41Seq(),host=document.getElementById('heroNarrativeV38');if(!host)return result;
+    host.dataset.v41Phase=seq.active?seq.phase:'idle';const wrap=v41EnsureNarrativeProgress();
+    const timed={preseal:MOBILE_V41.timing.sealDisplaySeconds,'base-lost':MOBILE_V41.timing.baseLostDisplaySeconds,'ego-call':MOBILE_V41.timing.egoCallDisplaySeconds};
+    const duration=timed[seq.phase]||0;
+    if(wrap&&duration>0){const left=Math.max(0,duration-v41PhaseElapsed()),pct=clamp(v41PhaseElapsed()/duration,0,1)*100;wrap.style.display='block';if(MOBILE_V41.ui.label)MOBILE_V41.ui.label.textContent=seq.phase==='preseal'?`봉인 ${left.toFixed(1)}초`:seq.phase==='base-lost'?`EGO 잠식 ${left.toFixed(1)}초`:`EGO의 목소리 ${left.toFixed(1)}초`;if(MOBILE_V41.ui.bar)MOBILE_V41.ui.bar.style.width=`${pct}%`;}
+    else if(wrap)wrap.style.display='none';
+    return result;
+  };
+
+  function v41DrawHighlightFx(){
+    const seq=v41Seq(),hero=v35Hero(),base=game.base;if(!seq.active||!MOBILE_UI_V22.introStarted)return;MOBILE_V41.stats.renderFrames++;
+    const now=game.defenseTime;
+    if(hero&&hero.hp>0&&['preseal','siege','base-lost','ego-call'].includes(seq.phase)){
+      const p=worldToScreen(hero.x,hero.y),t=now-(seq.startedAt>=0?seq.startedAt:now),pulse=.5+Math.sin(t*4.8)*.5;
+      if(isScreenVisible(p,200)){
+        ctx.save();ctx.translate(p.x,p.y-32);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#ff2f91';ctx.shadowBlur=12;ctx.strokeStyle='#ff69b4';ctx.lineWidth=1.6;ctx.globalAlpha=.42+pulse*.22;
+        for(let r=0;r<3;r++){ctx.save();ctx.rotate((r%2?1:-1)*t*(.24+r*.08));ctx.beginPath();ctx.arc(0,0,18+r*11+pulse*3,0,Math.PI*2);ctx.stroke();for(let i=0;i<4+r;i++){const a=i*Math.PI*2/(4+r);ctx.beginPath();ctx.moveTo(Math.cos(a)*(12+r*9),Math.sin(a)*(12+r*9));ctx.lineTo(Math.cos(a)*(19+r*11),Math.sin(a)*(19+r*11));ctx.stroke();}ctx.restore();}
+        ctx.strokeStyle='rgba(255,170,220,.72)';ctx.lineWidth=1.2;for(let i=0;i<4;i++){const a=i*Math.PI/2+t*.16,rad=48+pulse*4;ctx.beginPath();ctx.moveTo(Math.cos(a)*rad,Math.sin(a)*rad);ctx.lineTo(Math.cos(a+1.7)*11,Math.sin(a+1.7)*11);ctx.stroke();}
+        ctx.restore();
+      }
+    }
+    if(base&&base.hp>0&&['siege','base-lost','ego-call'].includes(seq.phase)){
+      const p=worldToScreen(base.x,base.y),pulse=.5+Math.sin(now*3.4)*.5;if(isScreenVisible(p,260)){
+        ctx.save();ctx.translate(p.x,p.y-18);ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.22+pulse*.16;ctx.strokeStyle=seq.phase==='ego-call'?'#dff7ff':'#ff345c';ctx.shadowColor=ctx.strokeStyle;ctx.shadowBlur=14;ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(0,0,28+pulse*14,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(0,0,48+pulse*20,0,Math.PI*2);ctx.stroke();ctx.restore();
+      }
+    }
+    if(seq.phase==='ego-call'&&hero&&base){
+      const p=worldToScreen(base.x,base.y),q=worldToScreen(hero.x,hero.y),u=(Math.sin(now*5)+1)/2;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle='#e9f8ff';ctx.shadowColor='#9ed8ff';ctx.shadowBlur=13;ctx.globalAlpha=.38+u*.35;ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(p.x,p.y-28);ctx.quadraticCurveTo((p.x+q.x)/2+Math.sin(now*2)*18,(p.y+q.y)/2-60,q.x,q.y-45);ctx.stroke();for(let i=0;i<4;i++){const k=(now*.35+i*.23)%1;ctx.beginPath();ctx.arc(p.x+(q.x-p.x)*k,p.y-28+(q.y-17-p.y)*k,2.2+i*.25,0,Math.PI*2);ctx.fillStyle='#ffffff';ctx.fill();}ctx.restore();
+    }
+    if(hero&&now<MOBILE_V41.fx.awakeningUntil){
+      const p=worldToScreen(hero.x,hero.y),age=8-(MOBILE_V41.fx.awakeningUntil-now),fade=clamp((MOBILE_V41.fx.awakeningUntil-now)/8,0,1);ctx.save();ctx.translate(p.x,p.y);ctx.globalCompositeOperation='lighter';ctx.shadowColor='#aee4ff';ctx.shadowBlur=18;ctx.strokeStyle='#ffffff';for(let i=0;i<10;i++){const a=i*Math.PI/5+now*.45,inner=8+Math.sin(now*4+i)*3,outer=34+(1-fade)*35+(i%3)*5;ctx.globalAlpha=.18+fade*.34;ctx.lineWidth=1.2+(i%2)*.8;ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner-12);ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer-30);ctx.stroke();}ctx.restore();
+    }
+    const boss=v40FinalBoss();if(boss&&MOBILE_V40.duel.startedAt>=0&&hero){
+      const p=worldToScreen(hero.x,hero.y),q=worldToScreen(boss.x,boss.y),pulse=.5+Math.sin(now*6)*.5;if(isScreenVisible(p,220)||isScreenVisible(q,220)){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.14+pulse*.12;ctx.strokeStyle='#ffffff';ctx.shadowColor='#ff8bdc';ctx.shadowBlur=10;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(p.x,p.y-26);ctx.lineTo(q.x,q.y-34);ctx.stroke();ctx.restore();}
+    }
+  }
+
+  const v41RenderPrev=render;
+  render=function(){const result=v41RenderPrev();try{v41DrawHighlightFx();}catch(error){v41Error('render',error);}return result;};
+  const v41UpdatePrev=update;
+  update=function(dt){
+    const result=v41UpdatePrev(dt);
+    try{
+      const seq=v41Seq();
+      if(seq.active&&seq.released&&seq.phase==='awakened'&&game.defenseTime-seq.awakenedAt>=9)seq.phase='hunt';
+      if(seq.active&&seq.released&&['awakened','hunt'].includes(seq.phase)&&!v40FinalBoss())v41TrimSiegeEnemies();
+      MOBILE_V40.balance.duelMinimumSeconds=v41DuelMinimum();
+      if(!systemPanel.classList.contains('hidden')&&seq.active&&performance.now()%400<20)v38RenderNarrative(false);
+    }catch(error){v41Error('post-update',error);}
+    return result;
+  };
+
+  function v41ApplyEndingCopy(){
+    if(game.difficulty!=='hard'||!v41Seq().active||!game.gameOver||game.result!=='승리'||!v35Route().egoRecovered)return false;
+    const title=helpEl.querySelector('h1');
+    if(title)title.textContent='엔딩: 백은의 EGO 탈환 - 사이버 성역 방어 2.5D';
+    const paragraphs=[...helpEl.querySelectorAll(':scope > p')];
+    const finalText='적의 함정으로 의목사는 봉인되고 성역 본부의 EGO는 잠식당했다. 그러나 EGO의 부름에 응답한 의목사가 백은으로 각성해 남은 악몽을 모두 베었고, 악몽 군주 아자르에게서 EGO를 탈환했다. 무너진 몽세에는 다시 빛이 돌아오며 성역은 회복을 시작한다.';
+    if(paragraphs[0])paragraphs[0].textContent=finalText;
+    else if(title){const p=document.createElement('p');p.textContent=finalText;title.insertAdjacentElement('afterend',p);}
+    return true;
+  }
+  function v41QueueEndingCopy(){for(const delay of [0,80,260,360,430,620,900,1400])window.setTimeout(v41ApplyEndingCopy,delay);}
+
+  const v41BossDefeatedPrev=handleNightmareBossDefeated;
+  handleNightmareBossDefeated=function(enemy){
+    const final=!!(enemy&&ENEMY_REGISTRY[enemy.type]?.finalBoss),result=v41BossDefeatedPrev(enemy);
+    if(final&&v41Seq().active){const seq=v41Seq();seq.phase='completed';seq.completedAt=game.defenseTime;v40StoryEvent('v41-ending','악몽 군주가 쓰러졌다. 의목사는 EGO를 탈환하고 무너진 몽세에 다시 빛을 돌려놓았다.',9,8500);v41QueueEndingCopy();}
+    return result;
+  };
+
+  const v41EndGamePrev=endGame;
+  endGame=function(win,reason,ending=false){
+    const result=v41EndGamePrev(win,reason,ending);
+    if(win&&game.difficulty==='hard'&&v41Seq().active)v41QueueEndingCopy();
+    return result;
+  };
+
+  const v41ResetPrev=resetGame;
+  resetGame=function(){
+    const result=v41ResetPrev(),seq=v41Seq();
+    Object.assign(seq,{active:false,phase:'idle',phaseStartedAt:-1,startedAt:-1,finalWaveStartedAt:-1,collapseAt:-1,egoCallAt:-1,awakenedAt:-1,completedAt:-1,waveStarted:false,baseLost:false,egoCalled:false,released:false,bypassStart:false,lastPulseAt:-Infinity,lastReinforcementAt:-Infinity,siegePulseCount:0,reinforcementCount:0,initialStructures:0,initialBaseHp:0,text:'',emotion:'focus',textUntil:-Infinity,progressLabel:'',progressDuration:0,siegeLine:0,finalCarrierAssigned:false});
+    MOBILE_V41.fx.awakeningUntil=-Infinity;MOBILE_V40.balance.duelMinimumSeconds=v41DuelMinimum();
+    try{v38RenderNarrative(true);}catch(error){v41Error('reset-ui',error);}return result;
+  };
+
+  function v41Audit(){
+    const seq=v41Seq(),story=v37Story(),codes=(story.events||[]).map(e=>e.code),ordered=['v41-preseal','v41-final-wave','v41-base-lost','v41-ego-call','v41-awakened'];let cursor=-1;const missing=[];
+    for(const code of ordered){const at=codes.indexOf(code,cursor+1);if(at<0)missing.push(code);else cursor=at;}
+    const exact={seal:MOBILE_V41.timing.sealDisplaySeconds,baseLost:MOBILE_V41.timing.baseLostDisplaySeconds,egoCall:MOBILE_V41.timing.egoCallDisplaySeconds};
+    const observed={
+      seal:seq.finalWaveStartedAt>=0&&seq.startedAt>=0?Number((seq.finalWaveStartedAt-seq.startedAt).toFixed(3)):null,
+      baseLost:seq.egoCallAt>=0&&seq.collapseAt>=0?Number((seq.egoCallAt-seq.collapseAt).toFixed(3)):null,
+      egoCall:seq.awakenedAt>=0&&seq.egoCallAt>=0?Number((seq.awakenedAt-seq.egoCallAt).toFixed(3)):null,
+      highlight:seq.completedAt>=0&&seq.startedAt>=0?Number((seq.completedAt-seq.startedAt).toFixed(3)):null,
+    };
+    const timingOk=(observed.seal==null||Math.abs(observed.seal-exact.seal)<=.45)&&(observed.baseLost==null||Math.abs(observed.baseLost-exact.baseLost)<=.45)&&(observed.egoCall==null||Math.abs(observed.egoCall-exact.egoCall)<=.45);
+    const highlightOk=observed.highlight==null||observed.highlight>=120;
+    return{passed:game.difficulty!=='hard'||!v35Route().active||game.result!=='승리'||(missing.length===0&&v35Route().egoRecovered&&MOBILE_V40.duel.minimumHeld&&timingOk&&highlightOk&&MOBILE_V41.errors.length===0),version:MOBILE_V41.version,phase:seq.phase,active:seq.active,timing:{...MOBILE_V41.timing,duelCurrent:MOBILE_V40.balance.duelMinimumSeconds},sequence:{startedAt:seq.startedAt,finalWaveStartedAt:seq.finalWaveStartedAt,collapseAt:seq.collapseAt,egoCallAt:seq.egoCallAt,awakenedAt:seq.awakenedAt,completedAt:seq.completedAt,reinforcementCount:seq.reinforcementCount,siegePulseCount:seq.siegePulseCount},ordered,codes,missing,exact,observed,timingOk,highlightOk,duel:{...MOBILE_V40.duel},stats:{...MOBILE_V41.stats},errors:MOBILE_V41.errors.slice(-12)};
+  }
+  async function v41RunScenario(fastMode=false,maxGameSeconds=15000,step=.14){
+    const raw=await v39RunScenario('hard',true,!!fastMode,maxGameSeconds,step),audit=v41Audit();
+    return{...raw,version:MOBILE_V41.version,v41:audit,passed:!!raw.passed&&audit.passed};
+  }
+  window.__CYBER_SANCTUM_V41__={version:MOBILE_V41.version,state:()=>({build:v41Meta?.content||'',difficulty:game.difficulty,wave:game.wave,result:game.result,sequence:{...v41Seq()},route:v35BaseRouteSummary(),audit:v41Audit(),errors:MOBILE_V41.errors.slice(-12)}),audit:v41Audit,runScenario:v41RunScenario,begin:()=>v41BeginSequence(),forceCollapse:()=>v41CollapseBase(),release:()=>v41ReleaseAwakenedHero()};
+  for(const api of [window.__CYBER_SANCTUM_V40__,window.__CYBER_SANCTUM_V39__,window.__CYBER_SANCTUM_V38__,window.__CYBER_SANCTUM_V37__])if(api)api.version=MOBILE_V41.version;
+  MOBILE_V40.balance.duelMinimumSeconds=v41DuelMinimum();
+  // HARD_FINAL_HIGHLIGHT_SEQUENCE_V41_END
 
 
   requestAnimationFrame(loop);
